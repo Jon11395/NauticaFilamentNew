@@ -1,6 +1,6 @@
 Para deployar en domcloud.com
 
-source: <lINK DEL REPOSITORIO GITHUB>
+source: lINK DEL REPOSITORIO GITHUB
 features:
   - mysql
   - ssl
