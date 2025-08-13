@@ -1,4 +1,4 @@
-Para deployar en domcloud.com
+Para deployar en domcloud.com por primera vez
 
 source: lINK DEL REPOSITORIO GITHUB
 features:
@@ -34,3 +34,37 @@ commands:
   - cp -r vendor/livewire/livewire/dist public/livewire
   - npm install
   - npm run build
+
+
+
+Para despliegue de actualizaciones:
+
+source: lINK DEL REPOSITORIO GITHUB
+features:
+  - mysql
+  - ssl
+  - ssl always
+nginx:
+  root: public_html/public
+  fastcgi: on
+  locations:
+    - match: /
+      try_files: $uri $uri/ /index.php$is_args$args
+    - match: ~ \.[^\/]+(?<!\.php)$
+      try_files: $uri =404
+commands:
+# Dependencias
+  - composer install --no-dev --optimize-autoloader
+# Migraciones sin borrar datos
+  - php artisan migrate --force
+# Archivos de almacenamiento
+  - php artisan storage:link
+# Frontend
+  - npm install
+  - npm run build
+# Optimización
+  - php artisan config:cache
+  - php artisan route:cache
+  - php artisan view:cache
+
+
