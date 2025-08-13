@@ -34,10 +34,12 @@ commands:
   - cp -r vendor/livewire/livewire/dist public/livewire
   - npm install
   - npm run build
+  - chmod 0750 -R storage || true
 
 
-
+--------------------------------------------------------------------------
 Para despliegue de actualizaciones:
+
 
 source: lINK DEL REPOSITORIO GITHUB
 features:
