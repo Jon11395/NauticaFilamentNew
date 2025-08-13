@@ -53,16 +53,16 @@ nginx:
     - match: ~ \.[^\/]+(?<!\.php)$
       try_files: $uri =404
 commands:
-# Dependencias
+
   - composer install --no-dev --optimize-autoloader
-# Migraciones sin borrar datos
+
   - php artisan migrate --force
-# Archivos de almacenamiento
+
   - php artisan storage:link
-# Frontend
+
   - npm install
   - npm run build
-# Optimización
+
   - php artisan config:cache
   - php artisan route:cache
   - php artisan view:cache
