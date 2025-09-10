@@ -18,6 +18,11 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\FileUpload;
 use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
 
+use Filament\Support\Enums\FontWeight;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\Layout\Stack;
+use Filament\Support\Enums\Alignment;
 
 
 class ProjectResource extends Resource
@@ -71,6 +76,76 @@ class ProjectResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->heading('Proyectos')
+            ->description('Lista de proyectos')
+            ->columns([
+                Split::make([
+                    Tables\Columns\ImageColumn::make('image')
+                            ->label('Imagen')
+                            ->defaultImageUrl(url('/images/logo.png'))
+                            ->visibility('private')
+                            ->circular()
+                            ->size(100),
+                    Stack::make([
+                            Tables\Columns\TextColumn::make('name')
+                            ->label('Nombre')
+                            ->weight(FontWeight::Bold)
+                            ->searchable()
+                            ->size(1),
+                        Tables\Columns\TextColumn::make('status')
+                            ->label('Estado')
+                            ->badge()
+                            ->color(fn (string $state): string => match ($state) {
+                                'in_progress' => 'warning',
+                                'stopped' => 'danger',
+                                'finished' => 'success',
+                                })
+                                ->formatStateUsing(fn (string $state): string => match ($state) {
+                                    'in_progress' => 'En progreso',
+                                    'stopped' => 'Detenido',
+                                    'finished' => 'Terminado',
+                            }),
+                        Tables\Columns\TextColumn::make('offer_amount')
+                            ->label('Oferta')
+                            ->numeric()
+                            ->sortable()
+                            ->money('CRC')
+                            ->summarize(Sum::make()->label('Total')->money('CRC')),
+                        Tables\Columns\TextColumn::make('start_date')
+                            ->label('Inicio')
+                            ->date()
+                            ->sortable()
+                            ->icon('heroicon-m-calendar-days'),
+                         
+                    ])->space(2),
+                ])
+            ])
+            ->contentGrid([
+                'md' => 2,
+                'xl' => 3,
+            ])->actions([
+                Tables\Actions\ViewAction::make(),
+                //Tables\Actions\EditAction::make(),
+                //Tables\Actions\DeleteAction::make(),
+                ActivityLogTimelineTableAction::make('Activities')
+                    ->label('Actividad')
+                    ->color('info')
+                    ->limit(15),
+            
+                
+        
+            ])
+            ->filters([
+                //
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    //Tables\Actions\DeleteBulkAction::make(),
+                    FilamentExportBulkAction::make('Exportar'),
+                ]),
+            ]);
+        ;
+        /*return $table
             ->heading('Proyectos')
             ->description('Lista de proyectos')
             ->columns([
@@ -134,7 +209,7 @@ class ProjectResource extends Resource
                     //Tables\Actions\DeleteBulkAction::make(),
                     FilamentExportBulkAction::make('Exportar'),
                 ]),
-            ]);
+            ]);*/
     }
 
 

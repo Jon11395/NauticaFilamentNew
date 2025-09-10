@@ -16,13 +16,16 @@ class ProjectDifferenceOverview extends BaseWidget
     public ?Project $record;
 
     protected static ?string $pollingInterval = '5s';
-  
+
     protected int | string | array $columnSpan = 12;
 
     public function getColumns(): int 
     {
-        return 12;
+        return 1;
     }
+
+    protected ?string $heading = 'Diferencia';
+    protected ?string $description = 'Ingresos menos todos los gastos';
 
     protected function getStats(): array
     {
@@ -53,7 +56,7 @@ class ProjectDifferenceOverview extends BaseWidget
 
         return [
             Stat::make('Ganancias', '₡ '. $totalDifference)
-            ->description('Ingresos - (Gastos Pagos + Contratos + Planillas)')
+            ->description('Ingresos - (Gastos cubiertos + Contratos + Planillas)')
             ->descriptionIcon('heroicon-o-arrows-right-left')
             ->chart([7, 2, 10, 3, 15, 4, 17])
             ->color('info'),

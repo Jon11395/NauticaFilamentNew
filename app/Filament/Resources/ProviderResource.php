@@ -130,14 +130,18 @@ class ProviderResource extends Resource
                 PhoneColumn::make('phone')
                     ->label('Teléfono')
                     ->displayFormat(PhoneInputNumberType::NATIONAL)
-                    ->formatStateUsing(fn ($state) => $state ?? 'Sin teléfono'),
+                    ->formatStateUsing(fn ($state) => $state ?? 'Sin teléfono')
+                    ->icon('heroicon-m-phone'),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable()
+                    ->icon('heroicon-m-envelope'),
                 Tables\Columns\TextColumn::make('country.name')
                     ->label('País')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->icon('heroicon-m-flag'),
                 Tables\Columns\TextColumn::make('state.name')
                     ->label('Estado')
                     ->numeric()

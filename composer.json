@@ -19,6 +19,7 @@
         "guava/filament-nested-resources": "^1.2",
         "hasnayeen/themes": "^3.0",
         "joaopaulolndev/filament-general-settings": "^1.0",
+        "konnco/filament-import": "^3.0",
         "laravel/framework": "^11.9",
         "laravel/reverb": "^1.0",
         "laravel/tinker": "^2.9",

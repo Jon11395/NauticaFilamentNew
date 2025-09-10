@@ -24,12 +24,17 @@ class ProjectIncomeOverview extends BaseWidget
 
     public ?Project $record;
 
+    
     protected int | string | array $columnSpan = 12;
 
     public function getColumns(): int 
     {
-        return 12;
+        return 1;
     }
+
+    protected ?string $heading = 'Ingresos';
+    protected ?string $description = 'Suma de todos los ingresos del proyecto.';
+    
 
 
     protected function getStats(): array

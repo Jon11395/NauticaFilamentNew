@@ -19,4 +19,5 @@ class ListExpenses extends ListRecords
             Actions\CreateAction::make(),
         ];
     }
+
 }

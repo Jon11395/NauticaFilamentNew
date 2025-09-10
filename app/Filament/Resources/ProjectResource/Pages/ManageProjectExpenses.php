@@ -35,6 +35,7 @@ use Filament\Tables\Columns\Column;
 use Illuminate\Support\Facades\Storage;
 use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
 
+
 class ManageProjectExpenses extends ManageRelatedRecords
 {
     use NestedPage;
@@ -259,6 +260,7 @@ class ManageProjectExpenses extends ManageRelatedRecords
             ->headerActions([
                 Tables\Actions\CreateAction::make()->label('Crear gasto'),
                 //Tables\Actions\AssociateAction::make(),
+                
             ])
             ->actions([
                 Action::make('view_attachment')
@@ -289,5 +291,7 @@ class ManageProjectExpenses extends ManageRelatedRecords
                 ]),
             ]);
     }
+
+
     
 }

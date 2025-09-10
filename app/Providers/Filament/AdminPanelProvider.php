@@ -31,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            //->passwordReset()
+            ->passwordReset()
             ->profile()
             ->brandLogo(asset('images/logo1.png'))
             ->brandLogoHeight('2.5rem')

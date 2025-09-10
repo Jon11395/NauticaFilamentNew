@@ -56,15 +56,7 @@
             </div>
         </div>
         
-        
-        
-        
-        
-        
-
     </x-filament::section>
-
-
-   
+       
 
 </x-filament-panels::page>
