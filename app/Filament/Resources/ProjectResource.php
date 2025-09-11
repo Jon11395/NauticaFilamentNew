@@ -25,6 +25,7 @@ use Filament\Tables\Columns\Layout\Stack;
 use Filament\Support\Enums\Alignment;
 
 
+
 class ProjectResource extends Resource
 {
     use NestedResource;
@@ -78,6 +79,8 @@ class ProjectResource extends Resource
         return $table
             ->heading('Proyectos')
             ->description('Lista de proyectos')
+            ->defaultPaginationPageOption(25)
+            ->extremePaginationLinks()
             ->columns([
                 Split::make([
                     Tables\Columns\ImageColumn::make('image')
@@ -131,8 +134,6 @@ class ProjectResource extends Resource
                     ->label('Actividad')
                     ->color('info')
                     ->limit(15),
-            
-                
         
             ])
             ->filters([
@@ -143,7 +144,7 @@ class ProjectResource extends Resource
                     //Tables\Actions\DeleteBulkAction::make(),
                     FilamentExportBulkAction::make('Exportar'),
                 ]),
-            ]);
+            ])->defaultSort('start_date', 'desc');;
         ;
         /*return $table
             ->heading('Proyectos')
