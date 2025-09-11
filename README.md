@@ -41,31 +41,7 @@ commands:
 Para despliegue de actualizaciones:
 
 
-source: lINK DEL REPOSITORIO GITHUB
-features:
-  - mysql
-  - ssl
-  - ssl always
-nginx:
-  root: public_html/public
-  fastcgi: on
-  locations:
-    - match: /
-      try_files: $uri $uri/ /index.php$is_args$args
-    - match: ~ \.[^\/]+(?<!\.php)$
-      try_files: $uri =404
-commands:
-  - composer install --no-dev --optimize-autoloader
-  - php artisan migrate --force
-  - php artisan storage:link
-  - npm install
-  - npm run build
-  - php artisan config:cache
-  - php artisan route: cache
-  - php artisan view:cache
 
-preserve:
-  - public_html/public/storage
 
 
 
