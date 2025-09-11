@@ -43,7 +43,7 @@ Para despliegue de actualizaciones:
 * Vamos a domcloud.co a nuestro proyecto en la parte de Despliegue->Añadir una tarea de despliegue y le damos al boton de Configurar Webhook, tomamos el WEBHOOK_SECRET y el WEBHOOK_AUTH
 * Creamos los secrets en el github repo en settings->Secrets and Variables->Action new reporsitory secret
 
-* Para crear el workflow, vamos a nuestro repo en github->actions->create new workflow->set up a workflow yourself, le damos un nombre y pegamos el siguiente texto, despues guardamos y ejecutamos el workflow para asegurarnos que funciona:
+* Para crear el workflow, vamos a nuestro repo en github->actions->create new workflow->set up a workflow yourself, le damos un nombre y pegamos el siguiente texto, despues guardamos y ejecutamos el workflow para asegurarnos que funciona (abrir readme para ver formato correcto):
 
 name: Sync on DOM Cloud
 
@@ -67,6 +67,7 @@ jobs:
           data: >-
             {
               "commands": [
+                "git reset --hard",
                 "git pull",
                 "composer install --no-interaction --prefer-dist --optimize-autoloader",
                 "npm install",
