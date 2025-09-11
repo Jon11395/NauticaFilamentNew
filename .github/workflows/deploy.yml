@@ -1,0 +1,36 @@
+name: Deploy Laravel to DOM Cloud
+
+on:
+  workflow_dispatch: # run manually from Actions tab
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger DOM Cloud deploy
+        uses: distributhor/workflow-webhook@v3
+        env:
+          webhook_url: https://my.domcloud.co/api/githubdeploy
+          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+          webhook_auth: ${{ secrets.WEBHOOK_AUTH }}
+          data: >-
+            '{"commands":[
+              "git pull origin main",
+              "composer install --no-dev --optimize-autoloader",
+              "php artisan migrate --force",
+              "php artisan config:cache",
+              "php artisan route:cache",
+              "php artisan view:cache",
+              "restart"
+            ],"wait":1}'
+          verbose: true
+
+      - name: Verify deploy status
+        uses: distributhor/workflow-webhook@v3
+        env:
+          webhook_url: https://my.domcloud.co/api/githubdeploycheck
+          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+          webhook_auth: ${{ secrets.WEBHOOK_AUTH }}
