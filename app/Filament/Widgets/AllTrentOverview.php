@@ -29,6 +29,7 @@ class AllTrentOverview extends ChartWidget
         $startDate = $endDate->copy()->subMonths(11);
 
         // Get expenses counts grouped by year-month
+        /*
         $expenseCounts = Expense::whereBetween('date', [$startDate, $endDate])
             ->select(
                 DB::raw('COUNT(*) as count'),
@@ -44,11 +45,46 @@ class AllTrentOverview extends ChartWidget
                 return [$key => $item->count];
             })
             ->toArray();
+        */
+        $expenseCounts = Expense::whereBetween('date', [$startDate, $endDate])
+            ->select(
+                DB::raw('SUM(amount) as count'),
+                DB::raw('MONTH(date) as month'),
+                DB::raw('YEAR(date) as year')
+            )
+            ->groupBy(DB::raw('YEAR(date)'), DB::raw('MONTH(date)'))
+            ->orderBy(DB::raw('YEAR(date)'), 'ASC')
+            ->orderBy(DB::raw('MONTH(date)'), 'ASC')
+            ->get()
+            ->mapWithKeys(function ($item) {
+                $key = $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT);
+                return [$key => $item->count];
+            })
+            ->toArray();
 
         // Get income counts grouped by year-month
+        /*
         $incomeCounts = Income::whereBetween('date', [$startDate, $endDate])
             ->select(
                 DB::raw('COUNT(*) as count'),
+                DB::raw('MONTH(date) as month'),
+                DB::raw('YEAR(date) as year')
+            )
+            ->groupBy(DB::raw('YEAR(date)'), DB::raw('MONTH(date)'))
+            ->orderBy(DB::raw('YEAR(date)'), 'ASC')
+            ->orderBy(DB::raw('MONTH(date)'), 'ASC')
+            ->get()
+            ->mapWithKeys(function ($item) {
+                $key = $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT);
+                return [$key => $item->count];
+            })
+            ->toArray();
+
+        */
+
+        $incomeCounts = Income::whereBetween('date', [$startDate, $endDate])
+            ->select(
+                DB::raw('SUM(total_deposited) as count'),
                 DB::raw('MONTH(date) as month'),
                 DB::raw('YEAR(date) as year')
             )
@@ -85,30 +121,25 @@ class AllTrentOverview extends ChartWidget
                 [
                     'label' => 'Ingresos',  // Income
                     'data' => $incomeData,
+                    'backgroundColor' => '#1C3C6C',
                     'borderColor' => '#1C3C6C',
-                    'backgroundColor' => '1C3C6C',
-                    'pointBackgroundColor' => '#8C9CB4',
+                    'color' => '#1C3C6C',
                     'hoverBackgroundColor' => '#8C9CB4',
-                    'pointHoverBackgroundColor' => '#8C9CB4',
-                    'hoverBorderColor' => '#8C9CB4',
-                    'fill' => false,
                 ],
                 [
                     'label' => 'Gastos',  // Expenses
                     'data' => $expenseData,
+                    'backgroundColor' => '#ECAA14',
                     'borderColor' => '#ECAA14',
-                    'backgroundColor' => 'ECAA14',            // fill color for points
-                    'pointBackgroundColor' => '#CC5500',      // point normal color
-                    'pointHoverBackgroundColor' => '#CC5500',// point hover color
+                    'color' => '#ECAA14',
                     'hoverBackgroundColor' => '#CC5500',
-                    'hoverBorderColor' => '#CC5500',          // line color on hover 
-                    'fill' => false,
                 ],
                 
             ],
             'labels' => $labels,
         ];
     }
+
 
     protected function getType(): string
     {
