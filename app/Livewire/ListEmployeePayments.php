@@ -47,6 +47,7 @@ class ListEmployeePayments extends Component implements HasForms, HasTable
     public function table(Table $table): Table
     {
         return $table
+            ->deferLoading()
             ->query(Payment::where('spreadsheet_id', $this->record->id))
             ->heading('Planilla')
             ->description('Fecha de planilla: '.Carbon::parse($this->record->date)->format('d/m/Y'))

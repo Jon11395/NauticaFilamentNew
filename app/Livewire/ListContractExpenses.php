@@ -46,6 +46,7 @@ class ListContractExpenses extends Component implements HasForms, HasTable
     public function table(Table $table): Table
     {
         return $table
+            ->deferLoading()
             ->query(ContractExpense::where('contract_id', $this->record->id))
             ->heading('Gastos')
             ->description($this->record->name. ' - Monto del contrato: '. number_format($this->record->amount, 2). ' CRC')

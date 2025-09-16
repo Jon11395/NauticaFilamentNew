@@ -1,3 +1,3 @@
-<livewire:list-employee-payments :record="$record">
+<livewire:list-employee-payments :record="$record" />
 
 
