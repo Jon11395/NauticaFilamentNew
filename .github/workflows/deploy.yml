@@ -1,7 +1,7 @@
 name: Sync on DOM Cloud PROD
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -22,17 +22,18 @@ jobs:
               "commands": [
                 "git fetch origin main",
                 "git reset --hard origin/main",
-                "git pull",
-                "composer install --no-interaction --optimize-autoloader",
-                "npm install",
+                "composer install --no-interaction --optimize-autoloader --no-dev",
+                "npm ci --silent",
                 "npm run build",
                 "php artisan migrate --force",
+                "php artisan cache:clear",
                 "php artisan config:cache",
                 "php artisan route:cache",
                 "php artisan view:cache",
                 "restart"
               ]
             }
+
       - name: Check deployment status
         uses: distributhor/workflow-webhook@v3
         env:
