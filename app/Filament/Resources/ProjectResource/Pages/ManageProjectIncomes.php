@@ -176,7 +176,8 @@ class ManageProjectIncomes extends ManageRelatedRecords
             Tables\Columns\TextColumn::make('total_deposited')
                 ->label('Depositado')
                 ->money('CRC')
-                ->summarize(Sum::make()->label('Total')->money('CRC')),
+                ->summarize(Sum::make()->label('Total')->money('CRC'))
+                ->searchable(),
             Tables\Columns\TextColumn::make('description')
                 ->label('Descripción')
                 ->searchable()

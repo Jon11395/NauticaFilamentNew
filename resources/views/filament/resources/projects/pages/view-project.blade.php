@@ -55,6 +55,14 @@
                 </div>
             </div>
         </div>
+
+        <x-filament::button
+            icon="heroicon-o-arrow-down-tray"
+            color="primary"
+            tag="a"
+            href="{{ route('pdf.generate', $record->id) }}">
+            Resumen detallado
+        </x-filament::button>
         
     </x-filament::section>
        

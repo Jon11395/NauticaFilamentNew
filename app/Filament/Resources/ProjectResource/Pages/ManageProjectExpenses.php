@@ -215,10 +215,12 @@ class ManageProjectExpenses extends ManageRelatedRecords
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Monto')
                     ->money('CRC')
-                    ->summarize(Sum::make()->label('Total')->money('CRC')),
+                    ->summarize(Sum::make()->label('Total')->money('CRC'))
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
+                    ->searchable()
                     ->color(fn (string $state): string => match ($state) {
                         'paid' => 'success',
                         'unpaid' => 'warning',
@@ -229,10 +231,12 @@ class ManageProjectExpenses extends ManageRelatedRecords
                     }),
                 Tables\Columns\TextColumn::make('provider.name')
                     ->label('Proveedor')
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('ExpenseType.name')
                     ->label('Tipo')
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
             ])
             ->filters([
                 SelectFilter::make('ExpenseType')
