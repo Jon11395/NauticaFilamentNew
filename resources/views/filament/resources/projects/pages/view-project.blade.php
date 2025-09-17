@@ -60,7 +60,8 @@
             icon="heroicon-o-arrow-down-tray"
             color="primary"
             tag="a"
-            href="{{ route('pdf.generate', $record->id) }}">
+            href="{{ route('pdf.generate', $record->id) }}"
+            target="_blank">
             Resumen detallado
         </x-filament::button>
         
