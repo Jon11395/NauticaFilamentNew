@@ -16,8 +16,6 @@ class PdfController extends Controller
     public function generate($id)
     {
 
-        set_time_limit(300);
-
         $record = Project::findOrFail($id);
 
         // Load a Blade view and pass data + base64 image

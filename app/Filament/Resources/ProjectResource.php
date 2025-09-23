@@ -142,7 +142,7 @@ class ProjectResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     //Tables\Actions\DeleteBulkAction::make(),
-                    FilamentExportBulkAction::make('Exportar'),
+                    //FilamentExportBulkAction::make('Exportar'),
                 ]),
             ])->defaultSort('start_date', 'desc');;
         ;

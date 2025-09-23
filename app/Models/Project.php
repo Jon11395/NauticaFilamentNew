@@ -44,7 +44,7 @@ class Project extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->useLogName('Proveedores')
+            ->useLogName('Proyectos')
             ->logOnly(['Nombre', 'Oferta', 'Inicio', 'Estado' ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()

@@ -73,6 +73,7 @@ class AdminPanelProvider extends PanelProvider
                     ->label('Registros')
                     ->pluralLabel('Registros')
                     ->navigationGroup('Usuarios')
+                    ->isResourceActionHidden(true)
                     ->authorize(
                         fn () => auth()->user()?->hasAnyRole(['admin', 'super_admin'])
                     ),
