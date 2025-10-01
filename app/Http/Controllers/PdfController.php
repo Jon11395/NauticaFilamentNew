@@ -15,6 +15,8 @@ class PdfController extends Controller
 {
     public function generate($id)
     {
+        ini_set("memory_limit", "512M");
+        set_time_limit(300);
 
         $record = Project::findOrFail($id);
 
