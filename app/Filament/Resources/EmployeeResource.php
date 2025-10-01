@@ -73,7 +73,8 @@ class EmployeeResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\ToggleColumn::make('active')
                     ->label('Estado')
                     ->sortable()

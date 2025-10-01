@@ -23,6 +23,9 @@ use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
 use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
 use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
+use Filament\Support\Enums\FontWeight;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 
 
 class ProviderResource extends Resource
@@ -124,40 +127,44 @@ class ProviderResource extends Resource
             ->heading('Proveedores')
             ->description('Lista de proveedores')
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Nombre')
-                    ->searchable(),
-                PhoneColumn::make('phone')
-                    ->label('Teléfono')
-                    ->displayFormat(PhoneInputNumberType::NATIONAL)
-                    ->formatStateUsing(fn ($state) => $state ?? 'Sin teléfono')
-                    ->icon('heroicon-m-phone'),
-                Tables\Columns\TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable()
-                    ->copyable()
-                    ->icon('heroicon-m-envelope'),
-                Tables\Columns\TextColumn::make('country.name')
-                    ->label('País')
-                    ->numeric()
-                    ->sortable()
-                    ->icon('heroicon-m-flag'),
-                Tables\Columns\TextColumn::make('state.name')
-                    ->label('Estado')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('city.name')
-                    ->label('Ciudad')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Split::make([
+                    Tables\Columns\TextColumn::make('name')
+                        ->label('Nombre')
+                        ->searchable()
+                        ->sortable()
+                        ->weight(FontWeight::Bold),
+                    Stack::make([
+                        PhoneColumn::make('phone')
+                            ->label('Teléfono')
+                            ->displayFormat(PhoneInputNumberType::NATIONAL)
+                            ->formatStateUsing(fn ($state) => $state ?? 'Sin teléfono')
+                            ->icon('heroicon-m-phone')
+                            ->sortable(),
+                        Tables\Columns\TextColumn::make('email')
+                            ->label('Email')
+                            ->searchable()
+                            ->sortable()
+                            ->icon('heroicon-m-envelope'),
+                    ]),
+                    Stack::make([
+                        Tables\Columns\TextColumn::make('city.name')
+                            ->label('Ciudad')
+                            ->numeric()
+                            ->sortable(),
+                        Tables\Columns\TextColumn::make('state.name')
+                            ->label('Estado')
+                            ->numeric()
+                            ->sortable(),
+                        Tables\Columns\TextColumn::make('country.name')
+                            ->label('País')
+                            ->numeric()
+                            ->sortable()
+                            ->icon('heroicon-m-flag'),
+                        
+                    ]),
+                ]),
+
+                
             ])
             ->filters([
                 //
@@ -171,7 +178,7 @@ class ProviderResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                Tables\Actions\DeleteBulkAction::make(),
+                //Tables\Actions\DeleteBulkAction::make(),
                 FilamentExportBulkAction::make('Exportar'),
                 ]),
             ]);

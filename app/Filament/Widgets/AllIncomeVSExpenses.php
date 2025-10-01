@@ -48,7 +48,7 @@ class AllIncomeVSExpenses extends ChartWidget
             'labels' => [
                 'Ingresos',
                 'Gastos Pagos',
-                'Gastos No Pagos',
+                'Gastos Pendientes',
             ],
 
         ];
