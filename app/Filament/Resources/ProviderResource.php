@@ -67,6 +67,7 @@ class ProviderResource extends Resource
                             ->required()
                             ->maxLength(255),
                         PhoneInput::make('phone')
+                            ->label('Teléfono')
                             ->initialCountry('cr')
                             ->strictMode(),
                         Forms\Components\TextInput::make('email')
@@ -136,13 +137,15 @@ class ProviderResource extends Resource
                     Stack::make([
                         PhoneColumn::make('phone')
                             ->label('Teléfono')
+                            ->copyable()
                             ->displayFormat(PhoneInputNumberType::NATIONAL)
-                            ->formatStateUsing(fn ($state) => $state ?? 'Sin teléfono')
+                            ->formatStateUsing(fn ($state) => $state ? preg_replace('/^(\+\d{3})(\d+)/', '$1 $2', $state) : 'Sin teléfono')
                             ->icon('heroicon-m-phone')
                             ->sortable(),
                         Tables\Columns\TextColumn::make('email')
                             ->label('Email')
                             ->searchable()
+                            ->copyable()
                             ->sortable()
                             ->icon('heroicon-m-envelope'),
                     ]),
@@ -150,11 +153,13 @@ class ProviderResource extends Resource
                         Tables\Columns\TextColumn::make('city.name')
                             ->label('Ciudad')
                             ->numeric()
-                            ->sortable(),
+                            ->sortable()
+                            ->icon('heroicon-m-building-office-2'),
                         Tables\Columns\TextColumn::make('state.name')
                             ->label('Estado')
                             ->numeric()
-                            ->sortable(),
+                            ->sortable()
+                            ->icon('heroicon-m-map-pin'),
                         Tables\Columns\TextColumn::make('country.name')
                             ->label('País')
                             ->numeric()
@@ -181,7 +186,9 @@ class ProviderResource extends Resource
                 //Tables\Actions\DeleteBulkAction::make(),
                 FilamentExportBulkAction::make('Exportar'),
                 ]),
-            ]);
+            ])
+            ->recordUrl(fn () => null)
+            ->recordAction(null);
     }
 
     public static function getRelations(): array

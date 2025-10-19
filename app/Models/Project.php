@@ -41,6 +41,16 @@ class Project extends Model
         return $this->hasMany(Spreadsheet::class);
     }
 
+    public function timesheets(): HasMany
+    {
+        return $this->hasMany(Timesheet::class);
+    }
+
+    public function assignedEmployees()
+    {
+        return $this->belongsToMany(Employee::class, 'project_employees');
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
