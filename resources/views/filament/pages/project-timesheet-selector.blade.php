@@ -141,7 +141,7 @@
                         
                         <!-- Calendar Body -->
                         @foreach($this->getProjectEmployees() as $employee)
-                            <div class="grid gap-0 border-b border-gray-200 hover:bg-gray-50 min-w-max" style="grid-template-columns: 220px repeat(15, 65px);">
+                            <div class="group grid gap-0 border-b border-gray-200 hover:bg-gray-50 min-w-max" style="grid-template-columns: 220px repeat(15, 65px);">
                                 <!-- Employee Name -->
                                 <div class="p-4 bg-white border-r border-gray-200 text-sm font-medium text-gray-900 sticky left-0 z-10 hover:bg-gray-50 transition-colors">
                                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-0">
@@ -176,7 +176,7 @@
                                             color="danger"
                                             icon="heroicon-o-trash"
                                             tooltip="Remover del proyecto"
-                                            class="self-end lg:self-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            class="self-end lg:self-center"
                                         />
                                     </div>
                                     
