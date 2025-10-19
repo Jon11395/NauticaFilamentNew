@@ -170,14 +170,14 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <x-filament::button
+                                        <button
                                             wire:click="removeEmployeeFromProject({{ $employee->id }})"
-                                            size="xs"
-                                            color="danger"
-                                            icon="heroicon-o-trash"
-                                            tooltip="Remover del proyecto"
-                                            class="self-end lg:self-center"
-                                        />
+                                            class="self-center lg:self-end transition-colors"
+                                            style="color: #dc2626;"
+                                            title="Remover del proyecto"
+                                        >
+                                            <x-heroicon-o-trash class="w-4 h-4" />
+                                        </button>
                                     </div>
                                     
                                     
