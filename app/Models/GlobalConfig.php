@@ -1,0 +1,76 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class GlobalConfig extends Model
+{
+    protected $fillable = [
+        'key',
+        'value',
+        'type',
+        'description',
+    ];
+
+    protected $casts = [
+        'value' => 'string',
+    ];
+
+    /**
+     * Get a configuration value by key
+     */
+    public static function getValue(string $key, $default = null)
+    {
+        $config = static::where('key', $key)->first();
+        
+        if (!$config) {
+            return $default;
+        }
+
+        return static::castValue($config->value, $config->type);
+    }
+
+    /**
+     * Set a configuration value
+     */
+    public static function setValue(string $key, $value, string $type = 'string', ?string $description = null): void
+    {
+        static::updateOrCreate(
+            ['key' => $key],
+            [
+                'value' => $value,
+                'type' => $type,
+                'description' => $description,
+            ]
+        );
+    }
+
+    /**
+     * Cast value based on type
+     */
+    private static function castValue($value, string $type)
+    {
+        switch ($type) {
+            case 'integer':
+                return (int) $value;
+            case 'boolean':
+                return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+            case 'json':
+                return json_decode($value, true);
+            case 'string':
+            default:
+                return $value;
+        }
+    }
+
+    /**
+     * Get all configurations as an array
+     */
+    public static function getAllAsArray(): array
+    {
+        return static::all()->mapWithKeys(function ($config) {
+            return [$config->key => static::castValue($config->value, $config->type)];
+        })->toArray();
+    }
+}

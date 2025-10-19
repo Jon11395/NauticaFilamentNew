@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\Timesheet;
 use App\Models\Employee;
 use App\Policies\ProjectTimesheetSelectorPolicy;
+use App\Filament\Pages\GlobalConfig;
 use Filament\Pages\Page;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Section;
@@ -300,14 +301,11 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
             return collect();
         }
 
-        // Get employees assigned to this project (through project_employees table or timesheet entries)
-        return Employee::where(function ($query) {
-                $query->whereHas('timesheets', function ($subQuery) {
-                    $subQuery->where('project_id', $this->selectedProjectId);
-                })
-                ->orWhereHas('projectAssignments', function ($subQuery) {
-                    $subQuery->where('project_id', $this->selectedProjectId);
-                });
+        // Get employees assigned to this project through active project_employees assignments
+        // Only show employees who have active (non-soft-deleted) project assignments
+        return Employee::whereHas('projectAssignments', function ($subQuery) {
+                $subQuery->where('project_id', $this->selectedProjectId)
+                         ->whereNull('deleted_at');
             })
             ->where('active', true)
             ->orderBy('name')
@@ -367,35 +365,64 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
         }
 
         $addedCount = 0;
+        $restoredCount = 0;
         $alreadyAssignedCount = 0;
 
         foreach ($this->selectedEmployeesToAdd as $employeeId) {
             $employeeId = (int) $employeeId;
 
-            // Check if employee is already assigned to project
-            $exists = \DB::table('project_employees')
+            // Check if employee has a soft-deleted assignment
+            $softDeletedAssignment = \DB::table('project_employees')
                 ->where('project_id', $this->selectedProjectId)
                 ->where('employee_id', $employeeId)
-                ->exists();
+                ->whereNotNull('deleted_at')
+                ->first();
 
-            if (!$exists) {
-                \DB::table('project_employees')->insert([
-                    'project_id' => $this->selectedProjectId,
-                    'employee_id' => $employeeId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                $addedCount++;
+            if ($softDeletedAssignment) {
+                // Restore the soft-deleted assignment
+                \DB::table('project_employees')
+                    ->where('project_id', $this->selectedProjectId)
+                    ->where('employee_id', $employeeId)
+                    ->update([
+                        'deleted_at' => null,
+                        'updated_at' => now(),
+                    ]);
+                $restoredCount++;
             } else {
-                $alreadyAssignedCount++;
+                // Check if employee is already assigned to project (not soft-deleted)
+                $exists = \DB::table('project_employees')
+                    ->where('project_id', $this->selectedProjectId)
+                    ->where('employee_id', $employeeId)
+                    ->whereNull('deleted_at')
+                    ->exists();
+
+                if (!$exists) {
+                    \DB::table('project_employees')->insert([
+                        'project_id' => $this->selectedProjectId,
+                        'employee_id' => $employeeId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $addedCount++;
+                } else {
+                    $alreadyAssignedCount++;
+                }
             }
         }
 
-        // Show appropriate notification
+        // Show appropriate notifications
         if ($addedCount > 0) {
             Notification::make()
                 ->title('Empleados agregados al proyecto')
-                ->body("Se agregaron {$addedCount} empleado(s) al proyecto")
+                ->body("Se agregaron {$addedCount} empleado(s) nuevo(s) al proyecto")
+                ->success()
+                ->send();
+        }
+
+        if ($restoredCount > 0) {
+            Notification::make()
+                ->title('Empleados restaurados al proyecto')
+                ->body("Se restauraron {$restoredCount} empleado(s) al proyecto con sus horas registradas")
                 ->success()
                 ->send();
         }
@@ -468,33 +495,20 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
         }
 
         $removedFromProjectEmployees = false;
-        $removedFromTimesheets = false;
 
-        // Remove from project_employees table if exists
+        // Soft delete from project_employees table if exists
         $deletedFromProjectEmployees = \DB::table('project_employees')
             ->where('project_id', $this->selectedProjectId)
             ->where('employee_id', $employeeId)
-            ->delete();
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => now()]);
 
         if ($deletedFromProjectEmployees > 0) {
             $removedFromProjectEmployees = true;
         }
 
-        // Remove all timesheets for this employee and project
-        $deletedFromTimesheets = \DB::table('timesheets')
-            ->where('project_id', $this->selectedProjectId)
-            ->where('employee_id', $employeeId)
-            ->delete();
-
-        if ($deletedFromTimesheets > 0) {
-            $removedFromTimesheets = true;
-        }
-
-        if ($removedFromProjectEmployees || $removedFromTimesheets) {
-            $message = 'El empleado ha sido removido del proyecto';
-            if ($removedFromTimesheets) {
-                $message .= ' y sus timesheets han sido eliminados';
-            }
+        if ($removedFromProjectEmployees) {
+            $message = 'El empleado ha sido removido del proyecto. Sus horas registradas se mantienen y se restaurarán si vuelve a agregarse al proyecto.';
             
             Notification::make()
                 ->title('Empleado removido del proyecto')
@@ -520,17 +534,22 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
             return collect();
         }
 
-        // Get employees not yet assigned to this project
+        // Get employees who are either:
+        // 1. Not assigned to this project at all, OR
+        // 2. Have soft-deleted assignments (can be restored)
         return Employee::where('active', true)
-            ->whereNotIn('id', function ($query) {
-                $query->select('employee_id')
-                    ->from('project_employees')
-                    ->where('project_id', $this->selectedProjectId);
-            })
-            ->whereNotIn('id', function ($query) {
-                $query->select('employee_id')
-                    ->from('timesheets')
-                    ->where('project_id', $this->selectedProjectId);
+            ->where(function ($query) {
+                $query->whereNotIn('id', function ($subQuery) {
+                    $subQuery->select('employee_id')
+                        ->from('project_employees')
+                        ->where('project_id', $this->selectedProjectId);
+                })
+                ->orWhereIn('id', function ($subQuery) {
+                    $subQuery->select('employee_id')
+                        ->from('project_employees')
+                        ->where('project_id', $this->selectedProjectId)
+                        ->whereNotNull('deleted_at');
+                });
             })
             ->orderBy('name')
             ->get();
@@ -642,7 +661,7 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
             
             $regularCost = $timesheet->hours * $hourlySalary;
             $extraCost = $timesheet->extra_hours * $hourlySalary * 1.5; // 1.5x rate for overtime
-            $nightWorkBonus = ($timesheet->night_work ? 1 : 0) * 8300; // ₡8,300 per night work day
+            $nightWorkBonus = ($timesheet->night_work ? 1 : 0) * GlobalConfig::getNightWorkBonus();
             
             return $regularCost + $extraCost + $nightWorkBonus;
         });
@@ -684,7 +703,7 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
         // Calculate costs
         $regularCost = $regularHours * $hourlySalary;
         $extraCost = $extraHours * $hourlySalary * 1.5; // 1.5x rate for overtime
-        $nightWorkBonus = $nightWorkDays * 8300; // ₡8,300 per night work day
+        $nightWorkBonus = $nightWorkDays * GlobalConfig::getNightWorkBonus();
         $totalCost = $regularCost + $extraCost + $nightWorkBonus;
 
         return [

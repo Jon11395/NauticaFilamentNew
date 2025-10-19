@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         //$this->call(AdminUserSeeder::class);
         //$this->call(WorldTableSeeder::class);
         $this->call(ProjectTimesheetSelectorPermissionSeeder::class);
+        $this->call(GlobalConfigPermissionSeeder::class);
         
     }
 }

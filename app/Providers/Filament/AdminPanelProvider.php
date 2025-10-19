@@ -36,6 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('images/logo1.png'))
             ->brandLogoHeight('2.5rem')
             ->brandName('Náutica')
+            ->favicon(asset('images/logo.png'))
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -46,7 +47,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                //Widgets\AccountWidget::class,
+                Widgets\AccountWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

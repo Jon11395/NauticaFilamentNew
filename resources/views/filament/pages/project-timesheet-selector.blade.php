@@ -130,11 +130,11 @@
                                     <div class="flex items-center justify-between">
                                         <div class="flex-1">
                                             <div class="truncate">{{ $employee->name }}</div>
-                                            <div class="text-xs text-gray-500 mt-1">
+                                            <div class="text-xs mt-1">
                                                 @if($employee->hourly_salary && $employee->hourly_salary > 0)
-                                                    ₡{{ number_format($employee->hourly_salary, 2) }}/h
+                                                    <span class="text-gray-500">₡{{ number_format($employee->hourly_salary, 2) }}/h</span>
                                                 @else
-                                                    <span class="text-red-500">Sin salario por hora</span>
+                                                    <span style="color: #ef4444; font-weight: 500;">Sin salario por hora</span>
                                                 @endif
                                             </div>
                                         </div>
@@ -340,7 +340,7 @@
                     </div>
                 </div>
                 <div class="flex items-center">
-                    <div class="text-sm font-medium text-gray-900">{{ $employee->name }}</div>
+                    <div class="text-sm font-medium text-gray-900" style="padding: 0 12px;">{{ $employee->name }}</div>
                 </div>
             </div>
         @endforeach
@@ -372,16 +372,17 @@
                 ¿Estás seguro de que deseas remover a <strong>{{ $this->getEmployeeToRemoveName() }}</strong> del proyecto?
             </p>
             
-            <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <div class="flex">
-                    <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <div class="text-sm text-red-700">
-                        <p class="font-medium mb-1">Esta acción eliminará:</p>
+                    <x-heroicon-o-information-circle class="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <div class="text-sm text-yellow-700">
+                        <p class="font-medium mb-1">Esta acción:</p>
                         <ul class="list-disc list-inside space-y-1">
-                            <li>El empleado del proyecto</li>
-                            <li>Todos sus horas registradas</li>
+                            <li>Removerá al empleado del proyecto</li>
+                            <li>Mantendrá todas sus horas registradas</li>
+                            <li>Permitirá restaurar al empleado más tarde</li>
                         </ul>
-                        <p class="font-medium mt-2">Esta acción no se puede deshacer.</p>
+                        <p class="font-medium mt-2">Las horas registradas se restaurarán automáticamente si vuelve a agregarse al proyecto.</p>
                     </div>
                 </div>
             </div>
