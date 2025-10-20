@@ -73,7 +73,7 @@
                                     wire:click="goToCurrentPeriod"
                                     size="xs"
                                     color="primary"
-                                    tooltip="Ir al período actual (hoy + 13 días anteriores)"
+                                    tooltip="Ir al período actual"
                                     class="w-full sm:w-auto sm:max-w-fit flex items-center justify-center gap-1"
                                 >
                                     Hoy
