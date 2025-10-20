@@ -449,6 +449,7 @@
                     <input 
                         type="checkbox" 
                         {{ in_array($employee->id, $selectedEmployeesToAdd ?? []) ? 'checked' : '' }}
+                        wire:click="toggleEmployeeSelection({{ $employee->id }})"
                         class="w-4 h-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500 focus:ring-2 opacity-0 absolute"
                         onclick="event.stopPropagation()"
                     />
@@ -461,7 +462,7 @@
                     </div>
                 </div>
                 <div class="flex items-center min-w-0 flex-1">
-                    <div class="text-sm font-medium text-gray-900 truncate">{{ $employee->name }}</div>
+                    <div class="text-sm font-medium text-gray-900 truncate" style="margin-left: 8px;">{{ $employee->name }}</div>
                 </div>
             </div>
         @endforeach
