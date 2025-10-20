@@ -632,13 +632,47 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
 
         $startDate = $this->currentPeriodStart;
         $endDate = $this->getCurrentPeriodEnd();
+        $assignedEmployeeIds = $this->getProjectEmployees()->pluck('id')->toArray();
 
         return Timesheet::where('project_id', $this->selectedProjectId)
+            ->whereIn('employee_id', $assignedEmployeeIds)
             ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->get()
             ->sum(function ($timesheet) {
                 return $timesheet->hours + $timesheet->extra_hours;
             });
+    }
+
+    public function getTotalRegularHoursForPeriod(): float
+    {
+        if (!$this->selectedProjectId) {
+            return 0;
+        }
+
+        $startDate = $this->currentPeriodStart;
+        $endDate = $this->getCurrentPeriodEnd();
+        $assignedEmployeeIds = $this->getProjectEmployees()->pluck('id')->toArray();
+
+        return Timesheet::where('project_id', $this->selectedProjectId)
+            ->whereIn('employee_id', $assignedEmployeeIds)
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->sum('hours');
+    }
+
+    public function getTotalExtraHoursForPeriod(): float
+    {
+        if (!$this->selectedProjectId) {
+            return 0;
+        }
+
+        $startDate = $this->currentPeriodStart;
+        $endDate = $this->getCurrentPeriodEnd();
+        $assignedEmployeeIds = $this->getProjectEmployees()->pluck('id')->toArray();
+
+        return Timesheet::where('project_id', $this->selectedProjectId)
+            ->whereIn('employee_id', $assignedEmployeeIds)
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->sum('extra_hours');
     }
 
     public function getTotalCostForPeriod(): float
@@ -650,7 +684,10 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
         $startDate = $this->currentPeriodStart;
         $endDate = $this->getCurrentPeriodEnd();
 
+        $assignedEmployeeIds = $this->getProjectEmployees()->pluck('id')->toArray();
+        
         $timesheets = Timesheet::where('project_id', $this->selectedProjectId)
+            ->whereIn('employee_id', $assignedEmployeeIds)
             ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->with('employee')
             ->get();

@@ -301,17 +301,18 @@
                         @endforeach
                         
                         @if($this->getProjectEmployees()->count() == 0)
-                            <div class="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 border-t border-gray-200">
-                                <div class="max-w-md mx-auto">
-                                    <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <x-heroicon-o-users class="w-10 h-10 text-blue-600" />
+                            <div class="text-center py-16 bg-white border-t border-gray-200" style="margin-top: 64px; margin-bottom: 64px;">
+                                <div class="max-w-md mx-auto px-4">
+                                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <x-heroicon-o-users class="w-8 h-8 text-blue-600" />
                                     </div>
                                     <h5 class="text-xl font-semibold text-gray-900 mb-3">No hay empleados asignados</h5>
-                                    <p class="text-sm text-gray-600 mb-6">Selecciona empleados de la lista para agregarlos al proyecto y comenzar a registrar sus horas</p>
-                                    <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                                        <div class="flex items-center justify-center space-x-2 text-xs text-gray-500">
-                                            <x-heroicon-o-light-bulb class="w-4 h-4" />
-                                            <span>Tip: Usa el botón "Seleccionar Empleados" para agregar trabajadores</span>
+                                    <p class="text-gray-600 mb-8 leading-relaxed">Selecciona empleados de la lista para agregarlos al proyecto y comenzar a registrar sus horas</p>
+                                    
+                                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <div class="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                                            <x-heroicon-o-light-bulb class="w-4 h-4 text-yellow-500" />
+                                            <span>Usa el botón "Agregar Empleados" para agregar trabajadores</span>
                                         </div>
                                     </div>
                                 </div>
@@ -349,9 +350,15 @@
                                         <x-heroicon-o-clock class="w-6 h-6 text-blue-600" />
                                     </div>
                                 </div>
-                                <div class="mt-3 flex items-center text-xs text-gray-500">
-                                    <x-heroicon-o-arrow-trending-up class="w-3 h-3 mr-1" />
-                                    <span>Registradas en el período</span>
+                                <div class="mt-3 space-y-1">
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-500">Regulares:</span>
+                                        <span class="font-medium text-green-600">{{ number_format($this->getTotalRegularHoursForPeriod(), 1) }}h</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-500">Extra:</span>
+                                        <span class="font-medium text-orange-600">{{ number_format($this->getTotalExtraHoursForPeriod(), 1) }}h</span>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -363,7 +370,7 @@
                                         <p class="text-2xl font-bold text-green-600 mt-1">₡{{ number_format($this->getTotalCostForPeriod(), 0) }}</p>
                                     </div>
                                     <div class="p-3 bg-green-100 rounded-full">
-                                        <x-heroicon-o-currency-dollar class="w-6 h-6 text-green-600" />
+                                        <x-heroicon-o-wallet class="w-6 h-6 text-green-600" />
                                     </div>
                                 </div>
                                 <div class="mt-3 flex items-center text-xs text-gray-500">
