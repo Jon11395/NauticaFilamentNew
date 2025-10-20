@@ -129,6 +129,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
     {
         // Save each configuration to database
         foreach ($data as $key => $value) {
+            // Save the configuration (this will automatically log the activity)
             GlobalConfigModel::setValue(
                 $key,
                 $value,
