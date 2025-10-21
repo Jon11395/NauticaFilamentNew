@@ -75,6 +75,11 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                     ->label('Período')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('date')
+                    ->label('Fecha creación')
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(fn ($state) => $state ? \Carbon\Carbon::parse($state)->format('d/m/Y') : ''),
 
             ])
             ->filters([
