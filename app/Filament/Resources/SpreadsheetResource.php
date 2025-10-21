@@ -29,6 +29,15 @@ class SpreadsheetResource extends Resource
             ->schema([
                 Forms\Components\DateTimePicker::make('date')
                     ->required(),
+                Forms\Components\TextInput::make('period')
+                    ->label('Período')
+                    ->placeholder('07/10/2025 - 21/10/2025')
+                    ->disabled(),
+                Forms\Components\FileUpload::make('attachment')
+                    ->label('Archivo Adjunto')
+                    ->acceptedFileTypes(['application/pdf'])
+                    ->directory('spreadsheets')
+                    ->visibility('private'),
             ]);
     }
 
@@ -37,8 +46,23 @@ class SpreadsheetResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('date')
-                    ->dateTime()
+                    ->label('Fecha')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('period')
+                    ->label('Período')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('attachment')
+                    ->label('Archivo')
+                    ->formatStateUsing(fn ($state) => $state ? '📎 PDF' : 'Sin archivo')
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'success' : 'gray'),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Creado')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
