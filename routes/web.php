@@ -11,3 +11,11 @@ Route::get('/', function () {
 Route::get('/generate-pdf/{id}', [PdfController::class, 'generate'])
     ->name('pdf.generate')
     ->middleware('auth');
+
+Route::get('/salary-receipt/{id}', [PdfController::class, 'salaryReceipt'])
+    ->name('salary-receipt.download')
+    ->middleware('auth');
+
+Route::get('/salary-receipt-bulk/{ids}', [PdfController::class, 'bulkSalaryReceipt'])
+    ->name('salary-receipt.bulk-download')
+    ->middleware('auth');

@@ -25,6 +25,52 @@ final class PaymentsForm{
                         ->numeric()
                         ->default(0)
                         ->live(true)
+                        ->afterStateUpdated(function (Get $get, Set $set) {
+                            self::updateTotals($get, $set);
+                        })
+                        ->currencyMask(thousandSeparator: '.',decimalSeparator: ',',precision: 2),
+                    Forms\Components\TextInput::make('additionals')
+                        ->label('Adicionales')
+                        ->prefix('₡')
+                        ->required()
+                        ->numeric()
+                        ->default(0)
+                        ->live(true)
+                        ->afterStateUpdated(function (Get $get, Set $set) {
+                            self::updateTotals($get, $set);
+                        })
+                        ->currencyMask(thousandSeparator: '.',decimalSeparator: ',',precision: 2),
+                    Forms\Components\TextInput::make('rebates')
+                        ->label('Rebajas')
+                        ->prefix('₡')
+                        ->required()
+                        ->numeric()
+                        ->default(0)
+                        ->live(true)
+                        ->afterStateUpdated(function (Get $get, Set $set) {
+                            self::updateTotals($get, $set);
+                        })
+                        ->currencyMask(thousandSeparator: '.',decimalSeparator: ',',precision: 2),
+                    Forms\Components\TextInput::make('ccss')
+                        ->label('CCSS')
+                        ->prefix('₡')
+                        ->required()
+                        ->numeric()
+                        ->default(0)
+                        ->live(true)
+                        ->afterStateUpdated(function (Get $get, Set $set) {
+                            self::updateTotals($get, $set);
+                        })
+                        ->currencyMask(thousandSeparator: '.',decimalSeparator: ',',precision: 2),
+                    Forms\Components\TextInput::make('deposited')
+                        ->label('Total depositado')
+                        ->readonly()
+                        ->default(0)
+                        ->prefix('₡')
+                        ->live(true)
+                        ->afterStateHydrated(function (Get $get, Set $set) {
+                            self::updateTotals($get, $set);
+                        })
                         ->currencyMask(thousandSeparator: '.',decimalSeparator: ',',precision: 2),
                     Forms\Components\Select::make('employee_id')
                         ->label('Empleado')
@@ -59,6 +105,18 @@ final class PaymentsForm{
                 ])
             
         ];
+    }
+
+    public static function updateTotals(Get $get, Set $set): void
+    {
+        $salary = (float) ($get('salary') ?? 0);
+        $additionals = (float) ($get('additionals') ?? 0);
+        $rebates = (float) ($get('rebates') ?? 0);
+        $ccss = (float) ($get('ccss') ?? 0);
+
+        $total = ($salary + $additionals) - ($rebates + $ccss);
+        
+        $set('deposited', $total);
     }
 
 }

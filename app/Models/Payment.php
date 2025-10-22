@@ -14,6 +14,10 @@ class Payment extends Model
 
     protected $fillable = [
         'salary',
+        'additionals',
+        'rebates',
+        'ccss',
+        'deposited',
         'description',
         'employee_id',
         'spreadsheet_id'

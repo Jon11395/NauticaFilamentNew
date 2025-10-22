@@ -62,6 +62,30 @@ class ListEmployeePayments extends Component implements HasForms, HasTable
                     ->searchable()
                     ->sortable()
                     ->summarize(Sum::make()->label('Total')->money('CRC')),
+                Tables\Columns\TextColumn::make('additionals')
+                    ->label('Adicionales')
+                    ->money('CRC')
+                    ->searchable()
+                    ->sortable()
+                    ->summarize(Sum::make()->label('Total')->money('CRC')),
+                Tables\Columns\TextColumn::make('rebates')
+                    ->label('Rebajas')
+                    ->money('CRC')
+                    ->searchable()
+                    ->sortable()
+                    ->summarize(Sum::make()->label('Total')->money('CRC')),
+                Tables\Columns\TextColumn::make('ccss')
+                    ->label('CCSS')
+                    ->money('CRC')
+                    ->searchable()
+                    ->sortable()
+                    ->summarize(Sum::make()->label('Total')->money('CRC')),
+                Tables\Columns\TextColumn::make('deposited')
+                    ->label('Total Depositado')
+                    ->money('CRC')
+                    ->searchable()
+                    ->sortable()
+                    ->summarize(Sum::make()->label('Total')->money('CRC')),
                 Tables\Columns\TextColumn::make('description')
                     ->label('Descripción')
                     ->searchable()
@@ -80,6 +104,12 @@ class ListEmployeePayments extends Component implements HasForms, HasTable
             ->actions([
                     Tables\Actions\EditAction::make()
                         ->form(PaymentsForm::schema($this->record->id)),
+                    Tables\Actions\Action::make('colilla')
+                        ->label('Colilla')
+                        ->icon('heroicon-o-document-text')
+                        ->color('success')
+                        ->url(fn (Payment $record) => route('salary-receipt.download', $record->id))
+                        ->openUrlInNewTab(),
                     Tables\Actions\DeleteAction::make(),
                     ActivityLogTimelineTableAction::make('Activities')
                         ->label('Actividad')
@@ -88,13 +118,74 @@ class ListEmployeePayments extends Component implements HasForms, HasTable
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    //Tables\Actions\DissociateBulkAction::make(),
+                    Tables\Actions\BulkAction::make('generate_all_colillas')
+                        ->label('Generar todas las colillas')
+                        ->icon('heroicon-o-document-text')
+                        ->color('success')
+                        ->action(function ($records) {
+                            $this->generateAllColillas($records);
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('Generar todas las colillas')
+                        ->modalDescription('¿Está seguro de que desea generar las colillas para todos los empleados seleccionados?')
+                        ->modalSubmitActionLabel('Generar colillas'),
                     Tables\Actions\DeleteBulkAction::make(),
                     FilamentExportBulkAction::make('Exportar'),
                 ]),
             ]);
     }
 
+
+    public function generateAllColillas($records)
+    {
+        try {
+            $generatedCount = 0;
+            $errors = [];
+            $paymentIds = [];
+            
+            foreach ($records as $payment) {
+                try {
+                    $paymentIds[] = $payment->id;
+                    $generatedCount++;
+                    
+                } catch (\Exception $e) {
+                    $errors[] = "Error preparando colilla para {$payment->employee->name}: " . $e->getMessage();
+                }
+            }
+            
+            // Trigger automatic download
+            if ($generatedCount > 0) {
+                $downloadUrl = route('salary-receipt.bulk-download', ['ids' => implode(',', $paymentIds)]);
+                
+                // Use JavaScript to trigger automatic download
+                $this->js("window.open('{$downloadUrl}', '_blank');");
+                
+                \Filament\Notifications\Notification::make()
+                    ->title('Descargando colillas')
+                    ->body("Se están generando {$generatedCount} colillas. El archivo ZIP se descargará automáticamente.")
+                    ->success()
+                    ->send();
+            }
+            
+            // Show error notifications if any
+            if (!empty($errors)) {
+                foreach ($errors as $error) {
+                    \Filament\Notifications\Notification::make()
+                        ->title('Error al preparar colilla')
+                        ->body($error)
+                        ->danger()
+                        ->send();
+                }
+            }
+            
+        } catch (\Exception $e) {
+            \Filament\Notifications\Notification::make()
+                ->title('Error al preparar colillas')
+                ->body('Error: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
 
     public function render()
     {

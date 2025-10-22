@@ -471,6 +471,10 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                     $employeesData = $employees->map(function ($employee) use ($fixedPayrollData) {
                         $employeeData = $fixedPayrollData[$employee->id] ?? [];
                         $salary = $employeeData['salario_base'] ?? 0;
+                        $adicionales = $employeeData['adicionales'] ?? 0;
+                        $rebajos = $employeeData['rebajos'] ?? 0;
+                        $ccss = $employeeData['ccss'] ?? 0;
+                        $salarioTotal = $salary + $adicionales - $rebajos - $ccss;
 
                         return [
                             'id' => $employee->id,
@@ -480,10 +484,10 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                             'night_days' => 0,
                             'hourly_rate' => 0,
                             'salario_base' => $salary,
-                            'adicionales' => 0,
-                            'rebajos' => 0,
-                            'ccss' => 0,
-                            'salario_total' => $salary,
+                            'adicionales' => $adicionales,
+                            'rebajos' => $rebajos,
+                            'ccss' => $ccss,
+                            'salario_total' => $salarioTotal,
                         ];
                     });
                     
@@ -508,9 +512,15 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
             
             // Create payment records for each employee
             foreach ($employeesData as $employeeData) {
+                $description = $payrollType === 'fixed' ? "Pago de planilla fija" : "Pago de planilla por horas";
+                
                 \App\Models\Payment::create([
-                    'salary' => $employeeData['salario_total'],
-                    'description' => "Pago de planilla",
+                    'salary' => $employeeData['salario_base'],
+                    'additionals' => $employeeData['adicionales'],
+                    'rebates' => $employeeData['rebajos'],
+                    'ccss' => $employeeData['ccss'],
+                    'deposited' => $employeeData['salario_total'],
+                    'description' => $description,
                     'employee_id' => $employeeData['id'],
                     'spreadsheet_id' => $spreadsheet->id,
                 ]);

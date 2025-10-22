@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Project;
+use App\Models\Payment;
+use Carbon\Carbon;
+use ZipArchive;
+use Illuminate\Support\Facades\Storage;
 
 class PdfController extends Controller
 {
@@ -93,6 +97,301 @@ class PdfController extends Controller
 
         // Download the generated PDF
         return $pdf->stream("record_{$id}.pdf");
+    }
+
+    public function salaryReceipt($id)
+    {
+        try {
+            // Get payment with related data
+            $payment = Payment::with(['employee', 'spreadsheet.project'])->findOrFail($id);
+            $employee = $payment->employee;
+            $spreadsheet = $payment->spreadsheet;
+            
+            // Calculate hourly rates and hours
+            $hourlyRate = $employee->hourly_salary;
+            $extraHourRate = $hourlyRate * 1.5;
+            
+            // Calculate hours from timesheets if available
+            $timesheets = $employee->timesheets()
+                ->where('project_id', $spreadsheet->project_id)
+                ->whereBetween('date', [
+                    Carbon::parse($spreadsheet->date)->startOfDay(),
+                    Carbon::parse($spreadsheet->date)->addDays(13)->endOfDay()
+                ])
+                ->get();
+            
+            $normalHours = $timesheets->sum('hours');
+            $extraHours = $timesheets->sum('extra_hours');
+            $nightDays = $timesheets->where('night_work', true)->count();
+            
+            // Get base salary from payment record
+            $baseSalary = $payment->salary ?? 0;
+            
+            // Determine employee type: hourly vs fixed
+            $hasTimesheetData = $timesheets->count() > 0 && ($normalHours > 0 || $extraHours > 0);
+            $employeeType = $hasTimesheetData ? 'hourly' : 'fixed';
+            
+            // Calculate amounts
+            $normalHoursAmount = $normalHours * $hourlyRate;
+            $extraHoursAmount = $extraHours * $extraHourRate;
+            $nightWorkBonus = \App\Models\GlobalConfig::getValue('night_work_bonus', 0);
+            $guardAmount = $nightDays * $nightWorkBonus;
+            
+            // For fixed employees, use the base salary as the main amount
+            if ($employeeType === 'fixed') {
+                $grossSalary = $baseSalary + ($payment->additionals ?? 0);
+            } else {
+                $grossSalary = $normalHoursAmount + $extraHoursAmount + $guardAmount + ($payment->additionals ?? 0);
+            }
+            
+            // Get CCSS from database
+            $ccssAmount = $payment->ccss ?? 0;
+            
+            // Calculate total deductions
+            $totalDeductions = $ccssAmount + ($payment->rebates ?? 0);
+            
+            // Calculate net pay
+            $netPay = $grossSalary - $totalDeductions;
+            
+            // Format period text
+            $periodText = $spreadsheet->period;
+            
+            // Parse date format like "07/10/2025 - 21/10/2025"
+            if (preg_match('/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/', $periodText, $matches)) {
+                $startDay = $matches[1];
+                $startMonth = $matches[2];
+                $startYear = $matches[3];
+                $endDay = $matches[4];
+                $endMonth = $matches[5];
+                $endYear = $matches[6];
+                
+                // Convert month numbers to Spanish month names
+                $months = [
+                    '01' => 'enero', '02' => 'febrero', '03' => 'marzo', '04' => 'abril',
+                    '05' => 'mayo', '06' => 'junio', '07' => 'julio', '08' => 'agosto',
+                    '09' => 'setiembre', '10' => 'octubre', '11' => 'noviembre', '12' => 'diciembre'
+                ];
+                
+                $startMonthName = strtoupper($months[$startMonth] ?? 'mes');
+                $endMonthName = strtoupper($months[$endMonth] ?? 'mes');
+                
+                $formattedPeriod = "Planilla del {$startDay} de {$startMonthName} al {$endDay} de {$endMonthName} del {$endYear}";
+            }
+            
+            // Prepare data for PDF
+            $data = [
+                'company_name' => 'NAUTICA JJ S.A.',
+                'employee_name' => $employee->name,
+                'period' => $formattedPeriod,
+                'hourly_rate' => number_format($hourlyRate, 2, ',', ' '),
+                'extra_hour_rate' => number_format($extraHourRate, 2, ',', ' '),
+                'normal_hours' => $normalHours,
+                'normal_hours_amount' => number_format($normalHoursAmount, 2, ',', ' '),
+                'extra_hours' => $extraHours,
+                'extra_hours_amount' => number_format($extraHoursAmount, 2, ',', ' '),
+                'guard_days' => $nightDays,
+                'guard_amount' => number_format($guardAmount, 2, ',', ' '),
+                'holiday_amount' => number_format($payment->additionals ?? 0, 2, ',', ' '),
+                'base_salary' => number_format($baseSalary, 2, ',', ' '),
+                'employee_type' => $employeeType,
+                'gross_salary' => number_format($grossSalary, 2, ',', ' '),
+                'ccss_rate' => $ccssAmount > 0 ? number_format(($ccssAmount / $grossSalary) * 100, 2, ',', ' ') . '%' : '0,00%',
+                'ccss_amount' => number_format($ccssAmount, 2, ',', ' '),
+                'rebates_amount' => number_format($payment->rebates ?? 0, 2, ',', ' '),
+                'total_deductions' => number_format($totalDeductions, 2, ',', ' '),
+                'net_pay' => number_format($netPay, 2, ',', ' '),
+                'generated_date' => now()->format('d/m/Y H:i:s')
+            ];
+            
+            // Generate PDF
+            $pdf = Pdf::loadView('pdf.salary-receipt', $data)
+                ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+            
+            // Generate filename
+            $filename = 'colilla_' . str_replace(' ', '_', $employee->name) . '_' . now()->format('Y_m_d_H_i_s') . '.pdf';
+            
+            // Return PDF download
+            return $pdf->stream($filename);
+            
+        } catch (\Exception $e) {
+            abort(500, 'Error al generar colilla: ' . $e->getMessage());
+        }
+    }
+
+    public function bulkSalaryReceipt($ids)
+    {
+        try {
+            $paymentIds = explode(',', $ids);
+            $payments = Payment::with(['employee', 'spreadsheet.project'])->whereIn('id', $paymentIds)->get();
+            
+            if ($payments->isEmpty()) {
+                abort(404, 'No se encontraron pagos para generar colillas');
+            }
+            
+            // Create a temporary directory for PDFs
+            $tempDir = storage_path('app/temp/colillas_' . now()->format('Y_m_d_H_i_s'));
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            
+            $pdfFiles = [];
+            
+            foreach ($payments as $payment) {
+                try {
+                    $employee = $payment->employee;
+                    $spreadsheet = $payment->spreadsheet;
+                    
+                    // Calculate hourly rates and hours
+                    $hourlyRate = $employee->hourly_salary;
+                    $extraHourRate = $hourlyRate * 1.5;
+                    
+                    // Calculate hours from timesheets if available
+                    $timesheets = $employee->timesheets()
+                        ->where('project_id', $spreadsheet->project_id)
+                        ->whereBetween('date', [
+                            Carbon::parse($spreadsheet->date)->startOfDay(),
+                            Carbon::parse($spreadsheet->date)->addDays(13)->endOfDay()
+                        ])
+                        ->get();
+                    
+                    $normalHours = $timesheets->sum('hours');
+                    $extraHours = $timesheets->sum('extra_hours');
+                    $nightDays = $timesheets->where('night_work', true)->count();
+                    
+                    // Get base salary from payment record
+                    $baseSalary = $payment->salary ?? 0;
+                    
+                    // Determine employee type: hourly vs fixed
+                    $hasTimesheetData = $timesheets->count() > 0 && ($normalHours > 0 || $extraHours > 0);
+                    $employeeType = $hasTimesheetData ? 'hourly' : 'fixed';
+                    
+                    // Calculate amounts
+                    $normalHoursAmount = $normalHours * $hourlyRate;
+                    $extraHoursAmount = $extraHours * $extraHourRate;
+                    $nightWorkBonus = \App\Models\GlobalConfig::getValue('night_work_bonus', 0);
+                    $guardAmount = $nightDays * $nightWorkBonus;
+                    
+                    // For fixed employees, use the base salary as the main amount
+                    if ($employeeType === 'fixed') {
+                        $grossSalary = $baseSalary + ($payment->additionals ?? 0);
+                    } else {
+                        $grossSalary = $normalHoursAmount + $extraHoursAmount + $guardAmount + ($payment->additionals ?? 0);
+                    }
+                    
+                    // Get CCSS from database
+                    $ccssAmount = $payment->ccss ?? 0;
+                    
+                    // Calculate total deductions
+                    $totalDeductions = $ccssAmount + ($payment->rebates ?? 0);
+                    
+                    // Calculate net pay
+                    $netPay = $grossSalary - $totalDeductions;
+                    
+                    // Format period text
+                    $periodText = $spreadsheet->period;// Default format
+                    
+                    // Parse date format like "07/10/2025 - 21/10/2025"
+                    if (preg_match('/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/', $periodText, $matches)) {
+                        $startDay = $matches[1];
+                        $startMonth = $matches[2];
+                        $startYear = $matches[3];
+                        $endDay = $matches[4];
+                        $endMonth = $matches[5];
+                        $endYear = $matches[6];
+                        
+                        // Convert month numbers to Spanish month names
+                        $months = [
+                            '01' => 'enero', '02' => 'febrero', '03' => 'marzo', '04' => 'abril',
+                            '05' => 'mayo', '06' => 'junio', '07' => 'julio', '08' => 'agosto',
+                            '09' => 'setiembre', '10' => 'octubre', '11' => 'noviembre', '12' => 'diciembre'
+                        ];
+                        
+                        $startMonthName = strtoupper($months[$startMonth] ?? 'mes');
+                        $endMonthName = strtoupper($months[$endMonth] ?? 'mes');
+                        
+                        $formattedPeriod = "Planilla del {$startDay} de {$startMonthName} al {$endDay} de {$endMonthName} del {$endYear}";
+                    }
+                    
+                    // Prepare data for PDF
+                    $data = [
+                        'company_name' => 'NAUTICA JJ S.A.',
+                        'employee_name' => $employee->name,
+                        'period' => $formattedPeriod,
+                        'hourly_rate' => number_format($hourlyRate, 2, ',', ' '),
+                        'extra_hour_rate' => number_format($extraHourRate, 2, ',', ' '),
+                        'normal_hours' => $normalHours,
+                        'normal_hours_amount' => number_format($normalHoursAmount, 2, ',', ' '),
+                        'extra_hours' => $extraHours,
+                        'extra_hours_amount' => number_format($extraHoursAmount, 2, ',', ' '),
+                        'guard_days' => $nightDays,
+                        'guard_amount' => number_format($guardAmount, 2, ',', ' '),
+                        'holiday_days' => $payment->additionals ?? 0,
+                        'holiday_amount' => number_format($payment->additionals ?? 0, 2, ',', ' '),
+                        'base_salary' => number_format($baseSalary, 2, ',', ' '),
+                        'employee_type' => $employeeType,
+                        'total_deductions' => number_format($totalDeductions, 2, ',', ' '),
+                        'gross_salary' => number_format($grossSalary, 2, ',', ' '),
+                        'ccss_amount' => number_format($ccssAmount, 2, ',', ' '),
+                        'rebates_amount' => number_format($payment->rebates ?? 0, 2, ',', ' '),
+                        'net_pay' => number_format($netPay, 2, ',', ' '),
+                        'generated_date' => now()->format('d/m/Y H:i:s')
+                    ];
+                    
+                    // Generate PDF
+                    $pdf = Pdf::loadView('pdf.salary-receipt', $data)
+                        ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+                    
+                    // Generate filename
+                    $filename = 'colilla_' . str_replace(' ', '_', $employee->name) . '_' . now()->format('Y_m_d_H_i_s') . '.pdf';
+                    $filePath = $tempDir . '/' . $filename;
+                    
+                    // Save PDF to temporary directory
+                    $pdf->save($filePath);
+                    $pdfFiles[] = $filePath;
+                    
+                } catch (\Exception $e) {
+                    // Log error but continue with other PDFs
+                    \Log::error("Error generating colilla for payment {$payment->id}: " . $e->getMessage());
+                }
+            }
+            
+            if (empty($pdfFiles)) {
+                abort(500, 'No se pudieron generar las colillas');
+            }
+            
+            // Create ZIP file
+            $zipFilename = 'colillas_' . now()->format('Y_m_d_H_i_s') . '.zip';
+            $zipPath = storage_path('app/temp/' . $zipFilename);
+            
+            $zip = new ZipArchive();
+            if ($zip->open($zipPath, ZipArchive::CREATE) !== TRUE) {
+                abort(500, 'No se pudo crear el archivo ZIP');
+            }
+            
+            foreach ($pdfFiles as $pdfFile) {
+                $zip->addFile($pdfFile, basename($pdfFile));
+            }
+            
+            $zip->close();
+            
+            // Clean up temporary PDF files
+            foreach ($pdfFiles as $pdfFile) {
+                if (file_exists($pdfFile)) {
+                    unlink($pdfFile);
+                }
+            }
+            
+            // Remove temporary directory
+            if (is_dir($tempDir)) {
+                rmdir($tempDir);
+            }
+            
+            // Return ZIP file download
+            return response()->download($zipPath, $zipFilename)->deleteFileAfterSend(true);
+            
+        } catch (\Exception $e) {
+            abort(500, 'Error al generar colillas en lote: ' . $e->getMessage());
+        }
     }
 
     private function getLogo()
