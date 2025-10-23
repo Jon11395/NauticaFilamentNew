@@ -51,6 +51,7 @@ class ListEmployeePayments extends Component implements HasForms, HasTable
             ->query(Payment::where('spreadsheet_id', $this->record->id))
             ->heading('Planilla')
             ->description('Fecha de planilla: '.Carbon::parse($this->record->date)->format('d/m/Y'))
+            ->recordAction('edit')
             ->columns([
                 Tables\Columns\TextColumn::make('employee.name')
                     ->label('Empleado')
@@ -129,7 +130,6 @@ class ListEmployeePayments extends Component implements HasForms, HasTable
                         ->modalHeading('Generar todas las colillas')
                         ->modalDescription('¿Está seguro de que desea generar las colillas para todos los empleados seleccionados?')
                         ->modalSubmitActionLabel('Generar colillas'),
-                    Tables\Actions\DeleteBulkAction::make(),
                     FilamentExportBulkAction::make('Exportar'),
                 ]),
             ]);

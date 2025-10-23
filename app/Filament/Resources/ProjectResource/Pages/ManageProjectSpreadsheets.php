@@ -69,6 +69,7 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
         return $table
             ->heading('Planillas')
             ->description('Lista de planillas')
+            ->defaultSort('date', 'desc')
             ->columns([
                 
                 Tables\Columns\TextColumn::make('period')
@@ -88,7 +89,17 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                         DatePicker::make('from'),
                         DatePicker::make('until')->default(now()),
                     ])
-                    // ...
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when(
+                                $data['from'],
+                                fn ($query, $date) => $query->whereDate('date', '>=', $date),
+                            )
+                            ->when(
+                                $data['until'],
+                                fn ($query, $date) => $query->whereDate('date', '<=', $date),
+                            );
+                    })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                 
@@ -377,6 +388,11 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                     ->modalHeading('Pagos a empleados')
                     ->icon('heroicon-s-eye')
                     ->color('gray')
+                    ->modalWidth('7xl')
+                    ->extraModalWindowAttributes([
+                        'class' => 'fi-modal-large',
+                        'style' => 'max-width: 80rem !important; width: 80rem !important;'
+                    ])
                     ->modalContent(function($record){
                         return view('filament.resources.projects.pages.SpreadsheetEmployee', ['record' => $record]);
                     })
