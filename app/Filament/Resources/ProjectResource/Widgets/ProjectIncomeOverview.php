@@ -32,8 +32,8 @@ class ProjectIncomeOverview extends BaseWidget
         return 1;
     }
 
-    protected ?string $heading = 'Ingresos';
-    protected ?string $description = 'Suma de todos los ingresos del proyecto.';
+    protected ?string $heading = 'Análisis de Ingresos';
+    protected ?string $description = 'Ingresos totales, tendencia mensual y comparación con períodos anteriores';
     
 
 
@@ -48,17 +48,16 @@ class ProjectIncomeOverview extends BaseWidget
         $endDate = Carbon::now();
         $startDate = $endDate->copy()->subMonths(6);
         
-        $incomeCounts = Income::where('project_id', $this->record->id)
+        $incomeAmounts = Income::where('project_id', $this->record->id)
             ->whereBetween('date', [$startDate, $endDate])
-            ->select(DB::raw('COUNT(*) as count'), DB::raw('MONTH(date) as month'), DB::raw('YEAR(date) as year'))
+            ->select(DB::raw('SUM(total_deposited) as total'), DB::raw('MONTH(date) as month'), DB::raw('YEAR(date) as year'))
             ->groupBy(DB::raw('YEAR(date)'), DB::raw('MONTH(date)'))
             ->orderBy(DB::raw('YEAR(date)'), 'ASC')
             ->orderBy(DB::raw('MONTH(date)'), 'ASC')
             ->get()
             ->mapWithKeys(function ($item) {
-                // Format the key as "year-month" and the value as the count of records
                 $key = $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT);
-                return [$key => $item->count];
+                return [$key => (float) $item->total];
             })
             ->toArray();
 
@@ -74,7 +73,7 @@ class ProjectIncomeOverview extends BaseWidget
             Stat::make('Ingresos', '₡ '.$totalIncomeDeposited)
             ->description($numberofincomes.' '.$label)
             ->descriptionIcon('heroicon-m-arrow-trending-up')
-            ->chart($incomeCounts)
+            ->chart($incomeAmounts)
             ->color('success'),
         ];
     }

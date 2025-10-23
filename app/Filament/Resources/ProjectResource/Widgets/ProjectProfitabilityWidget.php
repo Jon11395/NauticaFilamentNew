@@ -10,15 +10,13 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Carbon\Carbon;
 
-
-
-class ProjectDifferenceOverview extends BaseWidget
+class ProjectProfitabilityWidget extends BaseWidget
 {
     public ?Project $record;
 
     protected static ?string $pollingInterval = '5s';
 
-    protected int | string | array $columnSpan = 12;
+    protected int | string | array $columnSpan = 6;
 
     public function getColumns(): int 
     {
@@ -26,34 +24,40 @@ class ProjectDifferenceOverview extends BaseWidget
     }
 
     protected ?string $heading = 'Análisis de Rentabilidad';
-    protected ?string $description = 'Diferencia entre ingresos y gastos totales con tendencia mensual';
+    protected ?string $description = 'Margen de ganancia, ROI y tendencia de rentabilidad del proyecto';
 
     protected function getStats(): array
     {
         $endDate = Carbon::now();
         $startDate = $endDate->copy()->subMonths(6);
 
-        $totalIncomeDeposited = Income::where('project_id', $this->record->id)->sum('total_deposited');
+        // Calculate total income
+        $totalIncome = Income::where('project_id', $this->record->id)->sum('total_deposited');
 
+        // Calculate total expenses
         $totalExpensesPaid = Expense::where('project_id', $this->record->id)
             ->where('type', 'paid')
             ->sum('amount');
 
-        
         $totalContractExpenses = DB::table('contract_expenses')
             ->join('contracts', 'contract_expenses.contract_id', '=', 'contracts.id')
             ->join('projects', 'contracts.project_id', '=', 'projects.id')
             ->where('projects.id', $this->record->id)
             ->sum('contract_expenses.total_deposited');
 
-        $totalSpreadsheets = DB::table('payments')
+        $totalSpreadsheetExpenses = DB::table('payments')
             ->join('spreadsheets', 'payments.spreadsheet_id', '=', 'spreadsheets.id')
             ->join('projects', 'spreadsheets.project_id', '=', 'projects.id')
             ->where('projects.id', $this->record->id)
             ->sum('payments.salary');
 
-        // Calculate monthly differences for chart
-        $monthlyDifferences = [];
+        $totalExpenses = $totalExpensesPaid + $totalContractExpenses + $totalSpreadsheetExpenses;
+
+        // Calculate current profit margin
+        $currentProfitMargin = $totalIncome > 0 ? (($totalIncome - $totalExpenses) / $totalIncome) * 100 : 0;
+
+        // Calculate monthly profit margins for chart
+        $monthlyProfitMargins = [];
         
         // Get monthly incomes
         $monthlyIncomes = Income::where('project_id', $this->record->id)
@@ -110,7 +114,7 @@ class ProjectDifferenceOverview extends BaseWidget
             })
             ->toArray();
 
-        // Calculate differences for each month
+        // Calculate profit margins for each month
         $currentDate = $startDate->copy();
         while ($currentDate->lte($endDate)) {
             $key = $currentDate->format('Y-m');
@@ -120,20 +124,23 @@ class ProjectDifferenceOverview extends BaseWidget
                        ($monthlyContractExpenses[$key] ?? 0) + 
                        ($monthlySpreadsheetExpenses[$key] ?? 0);
             
-            $monthlyDifferences[$key] = round($income - $expenses, 2);
+            $profitMargin = $income > 0 ? (($income - $expenses) / $income) * 100 : 0;
+            $monthlyProfitMargins[$key] = round($profitMargin, 1);
             
             $currentDate->addMonth();
         }
 
-        $totalDifference = number_format(($totalIncomeDeposited - ($totalExpensesPaid + $totalContractExpenses + $totalSpreadsheets)), 2);
+        // Calculate average profit margin
+        $averageProfitMargin = count($monthlyProfitMargins) > 0 
+            ? round(array_sum($monthlyProfitMargins) / count($monthlyProfitMargins), 1) 
+            : 0;
 
         return [
-            Stat::make('Ganancias', '₡ '. $totalDifference)
-            ->description('Ingresos - (Gastos cubiertos + Contratos + Planillas)')
-            ->descriptionIcon('heroicon-o-arrows-right-left')
-            ->chart($monthlyDifferences)
-            ->color('info'),
+            Stat::make('Margen de Ganancia', number_format($currentProfitMargin, 1) . '%')
+            ->description('Promedio últimos 6 meses: ' . $averageProfitMargin . '%')
+            ->descriptionIcon('heroicon-o-chart-bar')
+            ->chart($monthlyProfitMargins)
+            ->color($currentProfitMargin >= 0 ? 'success' : 'danger'),
         ];
     }
-
 }

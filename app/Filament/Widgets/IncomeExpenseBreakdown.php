@@ -7,11 +7,12 @@ use App\Models\Income;
 use App\Models\Expense;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
-class AllIncomeVSExpenses extends ChartWidget
+class IncomeExpenseBreakdown extends ChartWidget
 {
     use HasWidgetShield;
     protected static ?string $heading = 'Ingresos vs Gastos';
-    protected static ?int $sort = 2;
+    protected static ?string $description = 'Comparación entre ingresos totales y gastos pagados/pendientes';
+    protected static ?int $sort = 3;
     public ?string $filter = 'this_month';
 
     protected function getData(): array

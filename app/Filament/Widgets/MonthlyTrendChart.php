@@ -15,12 +15,18 @@ use Illuminate\Support\Facades\DB;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 
-class AllTrentOverview extends ChartWidget
+class MonthlyTrendChart extends ChartWidget
 {
     use HasWidgetShield;
     
     protected static ?string $heading = 'Últimos 12 meses';
-    protected static ?int $sort =3;
+    protected static ?string $description = 'Tendencia de ingresos y gastos durante los últimos 12 meses';
+    protected static ?int $sort = 6;
+    
+    public function getColumnSpan(): int|string|array
+    {
+        return 'full';
+    }
 
 
     protected function getData(): array

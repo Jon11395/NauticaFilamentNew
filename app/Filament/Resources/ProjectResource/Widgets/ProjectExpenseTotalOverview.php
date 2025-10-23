@@ -22,8 +22,8 @@ class ProjectExpenseTotalOverview extends BaseWidget
         return 1;
     }
 
-    protected ?string $heading = 'Gastos';
-    protected ?string $description = 'Suma de todos los gastos del proyecto.';
+    protected ?string $heading = 'Resumen Total de Gastos';
+    protected ?string $description = 'Consolidado de todos los gastos: directos, contratos y planillas';
 
 
     protected function getStats(): array

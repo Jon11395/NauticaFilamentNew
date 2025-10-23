@@ -24,6 +24,9 @@ class ProjectExpenseOverview extends BaseWidget
         return 2;
     }
 
+    protected ?string $heading = 'Análisis Detallado de Gastos';
+    protected ?string $description = 'Desglose completo por categorías con tendencias mensuales';
+
 
 
 
@@ -46,9 +49,8 @@ class ProjectExpenseOverview extends BaseWidget
             ->orderBy(DB::raw('MONTH(date)'), 'ASC')
             ->get()
             ->mapWithKeys(function ($item) {
-                // Format the key as "year-month" and the value as the count of records
                 $key = $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT);
-                return [$key => $item->count];
+                return [$key => (int) $item->count];
             })
             ->toArray();
 
@@ -75,9 +77,8 @@ class ProjectExpenseOverview extends BaseWidget
             ->orderBy(DB::raw('MONTH(contract_expenses.date)'), 'ASC')
             ->get()
             ->mapWithKeys(function ($item) {
-                // Format the key as "year-month" and the value as the count of records
                 $key = $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT);
-                return [$key => $item->count];
+                return [$key => (int) $item->count];
             })
             ->toArray();
 
@@ -105,9 +106,8 @@ class ProjectExpenseOverview extends BaseWidget
             ->orderBy(DB::raw('MONTH(spreadsheets.date)'), 'ASC')
             ->get()
             ->mapWithKeys(function ($item) {
-                // Format the key as "year-month" and the value as the count of records
                 $key = $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT);
-                return [$key => $item->count];
+                return [$key => (int) $item->count];
             })
             ->toArray();
 
@@ -125,9 +125,8 @@ class ProjectExpenseOverview extends BaseWidget
             ->orderBy(DB::raw('MONTH(date)'), 'ASC')
             ->get()
             ->mapWithKeys(function ($item) {
-                // Format the key as "year-month" and the value as the count of records
                 $key = $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT);
-                return [$key => $item->count];
+                return [$key => (int) $item->count];
             })
             ->toArray();
 
@@ -137,25 +136,25 @@ class ProjectExpenseOverview extends BaseWidget
             Stat::make('Gastos cubiertos', '₡ ' . $totalExpenses)
             ->description($numberofexpenses . ' ' . $this->pluralize($numberofexpenses, 'gasto', 'gastos'))
             ->descriptionIcon('heroicon-c-arrow-trending-down')
-            //->chart($expenseCountsPaid)
+            ->chart($expenseCountsPaid)
             ->color('danger'),
 
             Stat::make('Gastos por contratos', '₡ ' . number_format($totalContractExpenses, 2))
             ->description($numberofcontractexpenses . ' ' . $this->pluralize($numberofcontractexpenses, 'gasto', 'gastos'))
             ->descriptionIcon('heroicon-c-arrow-trending-down')
-            //->chart($contractexpenseCountsByMonth)
+            ->chart($contractexpenseCountsByMonth)
             ->color('danger'),
 
             Stat::make('Gastos por planillas', '₡ ' . number_format($totalSpreadsheetPaid, 2))
-            ->description($numberofspreadsheetpayments . ' ' . $this->pluralize($numberofspreadsheetpayments, 'planilla', 'planillas'))
+            ->description($numberofspreadsheetpayments . ' ' . $this->pluralize($numberofspreadsheetpayments, 'pago de planilla', 'pagos de planillas'))
             ->descriptionIcon('heroicon-c-arrow-trending-down')
-            //->chart($spreadsheetPaymentsCountsByMonth)
+            ->chart($spreadsheetPaymentsCountsByMonth)
             ->color('danger'),
 
             Stat::make('Cuentas por pagar', '₡ '.$totalExpensesUnpaid)
             ->description($numberofexpensesUnpaid.' ' .'por pagar')
             ->descriptionIcon('heroicon-c-arrow-trending-down')
-            //->chart($expenseCountsUnpaid)
+            ->chart($expenseCountsUnpaid)
             ->color('warning'),
 
         ];
