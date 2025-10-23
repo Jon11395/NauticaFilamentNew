@@ -31,6 +31,17 @@ class MonthlyFinancialSummary extends BaseWidget
 
         $totalProjects = Project::where('status','in_progress')->count();
 
+        // Project Status Distribution
+        $projectStatusCounts = Project::selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+        $totalAllProjects = $projectStatusCounts->sum();
+
+        // Project Offer vs Actual Revenue
+        $totalOffers = Project::where('status', 'in_progress')->sum('offer_amount');
+        $totalActualRevenue = Income::sum('total_deposited');
+        $completionRate = $totalOffers > 0 ? ($totalActualRevenue / $totalOffers) * 100 : 0;
+
         // Get most profitable project
         $mostProfitableProject = Project::where('status', 'in_progress')
             ->with(['incomes', 'expenses'])
@@ -62,10 +73,15 @@ class MonthlyFinancialSummary extends BaseWidget
                 ->descriptionIcon($thisMonthExpenses >= $lastMonthExpenses ? 'heroicon-o-arrow-trending-down' : 'heroicon-o-arrow-trending-up')
                 ->color($thisMonthExpenses >= $lastMonthExpenses ? 'warning' : 'success'),
             
-            Stat::make('Proyectos Activos', $totalProjects)
-                ->description('Proyectos Activos')
-                ->descriptionIcon('heroicon-o-rectangle-stack')
-                ->color('primary'),
+            Stat::make('Proyectos en Progreso', $projectStatusCounts['in_progress'] ?? 0)
+                ->description('De ' . $totalAllProjects . ' proyectos totales')
+                ->descriptionIcon('heroicon-o-play-circle')
+                ->color('success'),
+
+            Stat::make('Cumplimiento de Ofertas', number_format($completionRate, 1) . '%')
+                ->description('₡ ' . number_format($totalActualRevenue, 2) . ' de ₡ ' . number_format($totalOffers, 2))
+                ->descriptionIcon($completionRate >= 80 ? 'heroicon-o-arrow-trending-up' : 'heroicon-o-arrow-trending-down')
+                ->color($completionRate >= 80 ? 'success' : 'warning'),
 
             Stat::make('Proyecto Más Rentable', $mostProfitableProject ? $mostProfitableProject['project']->name : 'Sin proyectos')
                 ->description($mostProfitableProject ? '₡ ' . number_format($mostProfitableProject['profit'], 2) . ' (' . number_format($mostProfitableProject['profit_margin'], 1) . '% margen)' : 'No hay proyectos activos')
