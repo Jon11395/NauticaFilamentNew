@@ -75,12 +75,75 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                 Tables\Columns\TextColumn::make('period')
                     ->label('Período')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) return '';
+                        
+                        // Set Spanish locale for month names
+                        \Carbon\Carbon::setLocale('es');
+                        
+                        // Try to parse the period string and format it
+                        // Assuming period might be in format "dd/mm/yyyy - dd/mm/yyyy"
+                        if (strpos($state, ' - ') !== false) {
+                            $parts = explode(' - ', $state);
+                            $startDate = \Carbon\Carbon::createFromFormat('d/m/Y', trim($parts[0]));
+                            $endDate = \Carbon\Carbon::createFromFormat('d/m/Y', trim($parts[1]));
+                            
+                            return $startDate->format('M d') . ' - ' . $endDate->format('M d, Y');
+                        }
+                        
+                        // If it's a single date, try to parse it
+                        try {
+                            $date = \Carbon\Carbon::parse($state);
+                            return $date->format('M d, Y');
+                        } catch (\Exception $e) {
+                            return $state; // Return original if parsing fails
+                        }
+                    }),
+
+                Tables\Columns\TextColumn::make('payroll_type')
+                    ->label('Tipo de Planilla')
+                    ->getStateUsing(function ($record) {
+                        // Get the first payment to determine the payroll type from description
+                        $firstPayment = $record->payment()->first();
+                        
+                        if (!$firstPayment) {
+                            return 'N/A';
+                        }
+                        
+                        $description = $firstPayment->description ?? '';
+                        
+                        if (str_contains($description, 'fija')) {
+                            return 'Fija';
+                        } elseif (str_contains($description, 'horas')) {
+                            return 'Por Horas';
+                        }
+                        
+                        return 'N/A';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Fija' => 'success',
+                        'Por Horas' => 'info',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('date')
                     ->label('Fecha creación')
                     ->searchable()
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => $state ? \Carbon\Carbon::parse($state)->format('d/m/Y') : ''),
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) return '';
+                        
+                        // Set Spanish locale for month names
+                        \Carbon\Carbon::setLocale('es');
+                        
+                        try {
+                            $date = \Carbon\Carbon::parse($state);
+                            return $date->format('M d, Y');
+                        } catch (\Exception $e) {
+                            return $state; // Return original if parsing fails
+                        }
+                    }),
 
             ])
             ->filters([
@@ -89,17 +152,7 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                         DatePicker::make('from'),
                         DatePicker::make('until')->default(now()),
                     ])
-                    ->query(function ($query, array $data) {
-                        return $query
-                            ->when(
-                                $data['from'],
-                                fn ($query, $date) => $query->whereDate('date', '>=', $date),
-                            )
-                            ->when(
-                                $data['until'],
-                                fn ($query, $date) => $query->whereDate('date', '<=', $date),
-                            );
-                    })
+                    // ...
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                 
@@ -131,8 +184,14 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                         'class' => 'fi-modal-large',
                         'style' => 'max-width: 80rem !important; width: 80rem !important;'
                     ])
-                    ->modalSubmitActionLabel('Generar planillas')
+                    ->modalSubmitActionLabel('Generar planilla')
                     ->modalCancelActionLabel('Cancelar')
+                    ->extraModalFooterActions([
+                        \Filament\Tables\Actions\Action::make('submit')
+                            ->label('Generar planilla')
+                            ->color('success')
+                            ->submit('submit'),
+                    ])
                     ->requiresConfirmation(false)
                     ->form([
                         Wizard::make([
