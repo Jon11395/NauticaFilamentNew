@@ -8,11 +8,13 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 
 class ProjectExpenseOverview extends BaseWidget
 {
-
+    use HasWidgetShield;
+    
     public ?Project $record;
 
     protected static ?string $pollingInterval = '5s';

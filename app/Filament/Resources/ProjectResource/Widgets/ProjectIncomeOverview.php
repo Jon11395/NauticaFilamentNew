@@ -13,11 +13,12 @@ use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 
 class ProjectIncomeOverview extends BaseWidget
 {
-
+    use HasWidgetShield;
     use InteractsWithPageTable;
 
     protected static ?string $pollingInterval = '5s';
