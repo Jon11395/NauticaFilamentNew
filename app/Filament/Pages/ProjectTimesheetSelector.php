@@ -52,15 +52,15 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
 
     /**
      * Initialize the component when it mounts
-     * Sets up the default 15-day period (today and previous 14 days)
-     * and fills the form with initial data
+     * Sets up the default period (today and previous 14 days)
+     * Users can select flexible ranges from 1 to 31 days (full month)
      */
     public function mount(): void
     {
-        // Initialize to current period (today and previous 13 days)
+        // Initialize to current period (today and previous 14 days)
         $this->currentPeriodStart = $this->getInitialPeriodStart();
         $this->startDate = $this->currentPeriodStart->format('Y-m-d');
-        $this->endDate = $this->getCurrentPeriodEnd()->format('Y-m-d');
+        $this->endDate = $this->currentPeriodStart->copy()->addDays(14)->format('Y-m-d');
         
         $this->form->fill([
             'selectedProjectId' => $this->selectedProjectId,
@@ -137,86 +137,95 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
 
     // Period navigation methods
     /**
-     * Navigate to the previous 15-day period
-     * Moves the calendar 14 days backward
+     * Navigate to the previous period
+     * Moves the calendar by the current period length backward
      */
     public function previousPeriod(): void
     {
-        $this->currentPeriodStart = $this->currentPeriodStart->subDays(14);
+        $daysCount = $this->getDaysInPeriod();
+        $this->currentPeriodStart = $this->currentPeriodStart->subDays($daysCount);
+        $this->endDate = $this->currentPeriodStart->copy()->addDays($daysCount - 1)->format('Y-m-d');
     }
 
     /**
-     * Navigate to the next 15-day period
-     * Moves the calendar 14 days forward
+     * Navigate to the next period
+     * Moves the calendar by the current period length forward
      */
     public function nextPeriod(): void
     {
-        $this->currentPeriodStart = $this->currentPeriodStart->addDays(14);
+        $daysCount = $this->getDaysInPeriod();
+        $this->currentPeriodStart = $this->currentPeriodStart->addDays($daysCount);
+        $this->endDate = $this->currentPeriodStart->copy()->addDays($daysCount - 1)->format('Y-m-d');
     }
 
     /**
      * Jump to the current period (today and previous 14 days)
      * Resets the calendar to show the most recent 15-day period
+     * Users can then adjust to any range up to 31 days (full month)
      */
     public function goToCurrentPeriod(): void
     {
         $this->currentPeriodStart = $this->getInitialPeriodStart();
         $this->startDate = $this->currentPeriodStart->format('Y-m-d');
-        $this->endDate = $this->getCurrentPeriodEnd()->format('Y-m-d');
+        $this->endDate = $this->currentPeriodStart->copy()->addDays(14)->format('Y-m-d');
+        
+        // Directly update the frontend JavaScript
+        $this->js("
+            selectedStartDate = new Date('{$this->startDate}');
+            selectedEndDate = new Date('{$this->endDate}');
+            updateDisplay();
+            generateCalendar();
+            console.log('Updated from backend:', selectedStartDate, selectedEndDate);
+        ");
     }
 
     /**
      * Handle start date changes from the date picker
-     * Automatically calculates and sets the end date to maintain 15-day range
+     * Validates the date range and updates the period
      */
     public function updatedStartDate($value): void
     {
-        if ($value) {
-            // Automatically set end date to 14 days after start date
-            $startDate = Carbon::parse($value);
-            $endDate = $startDate->copy()->addDays(14);
-            
-            $this->endDate = $endDate->format('Y-m-d');
-            $this->currentPeriodStart = $startDate;
+        if ($value && $this->endDate) {
+            $this->validateAndUpdateDateRange($value, $this->endDate);
         }
     }
 
     /**
      * Handle end date changes from the date picker
-     * Automatically calculates and sets the start date to maintain 15-day range
+     * Validates the date range and updates the period
      */
     public function updatedEndDate($value): void
     {
-        if ($value) {
-            // Automatically set start date to 14 days before end date
-            $endDate = Carbon::parse($value);
-            $startDate = $endDate->copy()->subDays(14);
-            
-            $this->startDate = $startDate->format('Y-m-d');
-            $this->currentPeriodStart = $startDate;
+        if ($value && $this->startDate) {
+            $this->validateAndUpdateDateRange($this->startDate, $value);
         }
     }
 
-    private function validateDateRange($start, $end): void
+    /**
+     * Validate and update the date range
+     * Allows flexible ranges from 1 to 31 days (full month including 31-day months)
+     */
+    private function validateAndUpdateDateRange($start, $end): void
     {
         $startDate = Carbon::parse($start);
         $endDate = Carbon::parse($end);
-        
-        // Check if range is exactly 15 days
-        if ($startDate->diffInDays($endDate) !== 14) {
-            Notification::make()
-                ->title('Rango de fechas inválido')
-                ->body('El rango de fechas debe ser exactamente 15 días')
-                ->danger()
-                ->send();
-            return;
-        }
         
         // Check if start date is after end date
         if ($startDate->gt($endDate)) {
             Notification::make()
                 ->title('Rango de fechas inválido')
                 ->body('La fecha de inicio debe ser anterior a la fecha de fin')
+                ->danger()
+                ->send();
+            return;
+        }
+        
+        // Check if range is within 1-31 days (full month including 31-day months)
+        $daysDiff = $startDate->diffInDays($endDate) + 1; // +1 to include both start and end dates
+        if ($daysDiff < 1 || $daysDiff > 31) {
+            Notification::make()
+                ->title('Rango de fechas inválido')
+                ->body('El rango de fechas debe ser entre 1 y 31 días (mes completo)')
                 ->danger()
                 ->send();
             return;
@@ -236,8 +245,8 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
 
     public function getCurrentPeriodEnd(): Carbon
     {
-        // End date is always 14 days after the start date (15 days total)
-        return $this->currentPeriodStart->copy()->addDays(14);
+        // Calculate end date based on the actual end date selected
+        return Carbon::parse($this->endDate);
     }
 
     public function getCurrentPeriodName(): string
@@ -254,15 +263,23 @@ class ProjectTimesheetSelector extends Page implements HasForms, HasActions
 
     public function getDaysInPeriod(): int
     {
-        return 15; // Always 15 days
+        if (!$this->startDate || !$this->endDate) {
+            return 15; // Default to 15 days if dates not set
+        }
+        
+        $startDate = Carbon::parse($this->startDate);
+        $endDate = Carbon::parse($this->endDate);
+        
+        return $startDate->diffInDays($endDate) + 1; // +1 to include both start and end dates
     }
 
     public function getPeriodDays(): array
     {
         $days = [];
         $startDate = $this->currentPeriodStart;
+        $daysCount = $this->getDaysInPeriod();
         
-        for ($i = 0; $i < 15; $i++) {
+        for ($i = 0; $i < $daysCount; $i++) {
             $days[] = $startDate->copy()->addDays($i);
         }
         return $days;

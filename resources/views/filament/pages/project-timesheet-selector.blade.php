@@ -7,7 +7,7 @@
             </x-slot>
             
             <x-slot name="description">
-                Selecciona un proyecto para gestionar sus horas trabajadas
+                Selecciona un proyecto para gestionar sus horas trabajadas (rango flexible de 1 a 31 días)
             </x-slot>
             
             <div class="max-w-md">
@@ -35,34 +35,80 @@
                             <p class="text-sm text-gray-500">{{ $this->getCurrentPeriodName() }}</p>
                         </div>
                         <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-                            <!-- Date Inputs -->
-                            <div class="flex flex-col sm:flex-row gap-3 flex-1">
-                                <div class="flex-1">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Desde</label>
-                                    <x-filament::input.wrapper>
-                                        <x-filament::input
-                                            type="date"
-                                            wire:model.live="startDate"
-                                            placeholder="Selecciona fecha de inicio"
-                                            class="w-full"
+                            <!-- Simple Date Range Picker -->
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Rango de Fechas</label>
+                                
+                                <!-- Calendar Display -->
+                                <div class="fi-input-wrp rounded-lg shadow-sm ring-1 ring-gray-950/10 dark:ring-white/20">
+                                    <div class="fi-input-wrp-inner flex items-center">
+                                        <input
+                                            type="text"
+                                            id="dateRangeDisplay"
+                                            placeholder="Selecciona un rango de fechas..."
+                                            class="fi-input block w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 outline-none transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 cursor-pointer"
+                                            style="padding-right: 2.5rem;"
+                                            readonly
+                                            onclick="toggleCalendar()"
                                         />
-                                    </x-filament::input.wrapper>
-                                </div>
-                                <div class="flex-1">
-                                    <label class="block text-sm font-medium text-gray-500 mb-2">Hasta</label>
-                                    <div class="flex items-center space-x-2">
-                                        <x-filament::input.wrapper class="flex-1">
-                                            <x-filament::input
-                                                type="date"
-                                                wire:model.live="endDate"
-                                                disabled
-                                                placeholder="Fecha calculada automáticamente"
-                                                class="w-full"
-                                            />
-                                        </x-filament::input.wrapper>
-                                        <div class="text-xs text-gray-500 bg-gray-200 px-3 py-2 rounded-lg whitespace-nowrap">
-                                           + 15 días
+                                        <div class="fi-input-wrp-suffix px-3 py-1.5">
+                                            <x-heroicon-o-calendar-days class="w-5 h-5 text-gray-400" />
                                         </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Calendar Widget -->
+                                <div id="calendarWidget" class="hidden absolute z-50 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-3 w-full max-w-xs" style="transition: opacity 0.2s ease-in-out;">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <button type="button" onclick="previousMonth()" style="padding: 2px; border-radius: 4px; background: transparent; border: none; cursor: pointer;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor='transparent'">
+                                            <x-heroicon-o-chevron-left class="w-4 h-4" />
+                                        </button>
+                                        <h3 id="calendarMonth" style="font-size: 14px; font-weight: 600; color: #374151;"></h3>
+                                        <button type="button" onclick="nextMonth()" style="padding: 2px; border-radius: 4px; background: transparent; border: none; cursor: pointer;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor='transparent'">
+                                            <x-heroicon-o-chevron-right class="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    <!-- Calendar Grid -->
+                                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 6px;">
+                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">D</div>
+                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">L</div>
+                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">M</div>
+                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">X</div>
+                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">J</div>
+                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">V</div>
+                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">S</div>
+                                    </div>
+
+                                    <div id="calendarDays" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;">
+                                        <!-- Calendar days will be generated here -->
+                                    </div>
+                                    
+                                    <!-- Calendar Actions -->
+                                    <div style="display: flex; justify-content: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                                        <div style="font-size: 11px; color: #6b7280; padding: 4px 0;">
+                                            Haz clic en diferentes días para cambiar la selección
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Hidden inputs for Livewire -->
+                                <input type="hidden" wire:model.live="startDate" id="startDate" />
+                                <input type="hidden" wire:model.live="endDate" id="endDate" />
+                                
+                                <!-- Date Range Info -->
+                                <div class="text-xs text-gray-500 bg-blue-50 px-3 py-2 rounded-lg mt-2">
+                                    <div class="flex items-center space-x-1">
+                                        <x-heroicon-o-information-circle class="w-3 h-3" />
+                                        <span>Haz clic en dos fechas para seleccionar un rango (máximo 31 días)</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Error Message -->
+                                <div id="dateRangeError" class="hidden text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg mt-2">
+                                    <div class="flex items-center space-x-1">
+                                        <x-heroicon-o-exclamation-triangle class="w-3 h-3" />
+                                        <span>El rango de fechas debe ser máximo 31 días</span>
                                     </div>
                                 </div>
                             </div>
@@ -86,7 +132,7 @@
                 <div class="overflow-x-auto border border-gray-200 rounded-xl shadow-sm">
                     <div class="min-w-full">
                         <!-- Employee Management Header -->
-                        <div class="bg-gray-50 border-b border-gray-200" style="width: calc(220px + 15 * 65px);">
+                        <div class="bg-gray-50 border-b border-gray-200" style="width: calc(220px + {{ $this->getDaysInPeriod() }} * 65px);">
                             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 p-4">
                                 <div class="flex-1">
                                     <h4 class="text-lg font-semibold text-gray-900">Empleados del Proyecto</h4>
@@ -114,7 +160,7 @@
                         </div>
                         
                         <!-- Calendar Header -->
-                        <div class="grid gap-0 mb-0 min-w-max" style="grid-template-columns: 220px repeat(15, 65px);">
+                        <div class="grid gap-0 mb-0 min-w-max" style="grid-template-columns: 220px repeat({{ $this->getDaysInPeriod() }}, 65px);">
                             <!-- Employee Name Column Header -->
                             <div class="p-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-r border-gray-200 font-semibold text-sm text-gray-700 sticky left-0 z-10">
                                 <div class="flex items-center">
@@ -141,7 +187,7 @@
                         
                         <!-- Calendar Body -->
                         @foreach($this->getProjectEmployees() as $employee)
-                            <div class="group grid gap-0 border-b border-gray-200 hover:bg-gray-50 min-w-max" style="grid-template-columns: 220px repeat(15, 65px);">
+                            <div class="group grid gap-0 border-b border-gray-200 hover:bg-gray-50 min-w-max" style="grid-template-columns: 220px repeat({{ $this->getDaysInPeriod() }}, 65px);">
                                 <!-- Employee Name -->
                                 <div class="p-4 bg-white border-r border-gray-200 text-sm font-medium text-gray-900 sticky left-0 z-10 hover:bg-gray-50 transition-colors">
                                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-0">
@@ -534,3 +580,391 @@
     </x-slot>
 </x-filament::modal>
 </div>
+
+<script>
+let currentDate = new Date();
+let selectedStartDate = null;
+let selectedEndDate = null;
+let calendarVisible = false;
+let preventClose = false;
+
+const months = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+function toggleCalendar() {
+    const calendar = document.getElementById('calendarWidget');
+    calendarVisible = !calendarVisible;
+    
+    if (calendarVisible) {
+        calendar.classList.remove('hidden');
+        generateCalendar();
+    } else {
+        calendar.classList.add('hidden');
+    }
+}
+
+function generateCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    // Update month display
+    document.getElementById('calendarMonth').textContent = `${months[month]} ${year}`;
+    
+    // Get first day of month and number of days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const calendarDays = document.getElementById('calendarDays');
+    calendarDays.innerHTML = '';
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.style.height = '32px';
+        calendarDays.appendChild(emptyCell);
+    }
+    
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dayElement = document.createElement('div');
+        dayElement.style.cssText = 'height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border-radius: 4px;';
+        dayElement.textContent = day;
+        
+        const date = new Date(year, month, day);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Check if this date would create an invalid range (more than 31 days)
+        let isDateDisabled = false;
+        if (selectedStartDate && !selectedEndDate) {
+            // We have a start date selected, check if this date would exceed 31 days
+            const startTime = new Date(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+            const endTime = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const daysDiff = Math.round((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1;
+            
+            // Disable dates that would exceed 31 days
+            if (daysDiff > 31) {
+                isDateDisabled = true;
+            }
+            
+            // Disable past dates (dates before the selected start date)
+            if (date < selectedStartDate) {
+                isDateDisabled = true;
+            }
+        }
+        
+        if (isDateDisabled) {
+            // Disable dates that would create invalid ranges
+            dayElement.style.color = '#d1d5db';
+            dayElement.style.cursor = 'not-allowed';
+            dayElement.style.backgroundColor = 'transparent';
+            dayElement.classList.add('disabled');
+        } else {
+            // Enable valid dates
+            dayElement.addEventListener('click', () => selectDate(date));
+            dayElement.addEventListener('mouseenter', function() {
+                // Check if this is a range date by looking at the current background color
+                const currentBg = this.style.backgroundColor;
+                
+                // Enhanced hover for range dates - make them darker
+                if (currentBg === 'rgb(191, 219, 254)' || currentBg === '#bfdbfe') {
+                    // This is a range date, make it darker
+                    this.style.backgroundColor = '#93c5fd';
+                    this.style.color = '#1e3a8a';
+                    this.style.fontWeight = '600';
+                    this.classList.add('range-hover');
+                } else if (!this.classList.contains('selected')) {
+                    // Regular hover for non-selected dates (including today)
+                    if (!this.classList.contains('today')) {
+                        this.style.backgroundColor = '#f3f4f6';
+                        this.classList.add('hovering');
+                    }
+                    
+                    // If we have a start date selected, show range preview (works for all dates including today)
+                    if (selectedStartDate && !selectedEndDate) {
+                        showRangePreview(selectedStartDate, date);
+                    }
+                }
+            });
+            dayElement.addEventListener('mouseleave', function() {
+                if (this.classList.contains('hovering')) {
+                    this.style.backgroundColor = 'transparent';
+                    this.classList.remove('hovering');
+                }
+                
+                // Reset range hover effect
+                if (this.classList.contains('range-hover')) {
+                    this.style.backgroundColor = '#bfdbfe';
+                    this.style.color = '#1e40af';
+                    this.style.fontWeight = 'normal';
+                    this.classList.remove('range-hover');
+                }
+                
+                // Clear range preview when mouse leaves
+                if (selectedStartDate && !selectedEndDate) {
+                    clearRangePreview();
+                }
+            });
+        }
+        
+        // Highlight today
+        if (date.getTime() === today.getTime()) {
+            dayElement.style.backgroundColor = '#fef3c7';
+            dayElement.style.color = '#92400e';
+            dayElement.style.fontWeight = '700';
+            dayElement.style.border = '2px solid #f59e0b';
+            dayElement.classList.add('today');
+        }
+
+        // Highlight selected dates
+        if (selectedStartDate && date.getTime() === selectedStartDate.getTime()) {
+            dayElement.style.backgroundColor = '#3b82f6';
+            dayElement.style.color = 'white';
+            dayElement.style.fontWeight = '600';
+            dayElement.classList.add('selected');
+        }
+        if (selectedEndDate && date.getTime() === selectedEndDate.getTime()) {
+            dayElement.style.backgroundColor = '#3b82f6';
+            dayElement.style.color = 'white';
+            dayElement.style.fontWeight = '600';
+            dayElement.classList.add('selected');
+        }
+
+        // Highlight range
+        if (selectedStartDate && selectedEndDate) {
+            if (date >= selectedStartDate && date <= selectedEndDate) {
+                if (date.getTime() !== selectedStartDate.getTime() && date.getTime() !== selectedEndDate.getTime()) {
+                    dayElement.style.backgroundColor = '#bfdbfe';
+                    dayElement.style.color = '#1e40af';
+                    dayElement.classList.add('range');
+                }
+            }
+        }
+        
+        calendarDays.appendChild(dayElement);
+    }
+}
+
+function selectDate(date) {
+    if (!selectedStartDate) {
+        // First click: select start date
+        selectedStartDate = date;
+        selectedEndDate = null;
+        preventClose = true; // Prevent calendar from closing
+    } else if (!selectedEndDate) {
+        // Second click: select end date
+        if (date.getTime() === selectedStartDate.getTime()) {
+            // Same date clicked, clear selection
+            selectedStartDate = null;
+            selectedEndDate = null;
+            preventClose = false;
+        } else {
+            // Different date clicked, set as end date
+            if (date < selectedStartDate) {
+                selectedEndDate = selectedStartDate;
+                selectedStartDate = date;
+            } else {
+                selectedEndDate = date;
+            }
+            
+            // Range validation is now handled at the UI level (disabled dates)
+            // No need for error messages since invalid dates are disabled
+            
+            hideError();
+            preventClose = false; // Allow calendar to close after range is complete
+            
+            // Update display first
+            updateDisplay();
+            
+            // Auto-apply the selection
+            applySelection();
+            
+            // Don't regenerate calendar after complete selection - just close it
+            return;
+        }
+    } else {
+        // Third click: start new selection
+        selectedStartDate = date;
+        selectedEndDate = null;
+        preventClose = true; // Prevent calendar from closing
+    }
+    
+    updateDisplay();
+    generateCalendar();
+}
+
+function previousMonth() {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    generateCalendar();
+}
+
+function nextMonth() {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    generateCalendar();
+}
+
+// clearSelection function removed - users can now click different days to change selection
+
+function applySelection() {
+    if (selectedStartDate && selectedEndDate) {
+        document.getElementById('startDate').value = formatDate(selectedStartDate);
+        document.getElementById('endDate').value = formatDate(selectedEndDate);
+        
+        // Trigger Livewire update using a more reliable method
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        // Dispatch change events to trigger Livewire updates
+        startDateInput.dispatchEvent(new Event('input', { bubbles: true }));
+        endDateInput.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Close calendar immediately without delay
+        toggleCalendar();
+    }
+}
+
+function updateDisplay() {
+    const display = document.getElementById('dateRangeDisplay');
+    console.log('updateDisplay called:', {
+        selectedStartDate: selectedStartDate ? selectedStartDate.toDateString() : null,
+        selectedEndDate: selectedEndDate ? selectedEndDate.toDateString() : null,
+        displayElement: display
+    });
+    
+    if (selectedStartDate && selectedEndDate) {
+        const formattedRange = `${formatDate(selectedStartDate)} - ${formatDate(selectedEndDate)}`;
+        display.value = formattedRange;
+        console.log('Setting range:', formattedRange);
+    } else if (selectedStartDate) {
+        const formattedStart = formatDate(selectedStartDate);
+        display.value = formattedStart;
+        console.log('Setting start date:', formattedStart);
+    } else {
+        display.value = '';
+        console.log('Clearing display');
+    }
+}
+
+function formatDate(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('dateRangeError');
+    errorDiv.querySelector('span').textContent = message;
+    errorDiv.classList.remove('hidden');
+}
+
+function hideError() {
+    document.getElementById('dateRangeError').classList.add('hidden');
+}
+
+// Range preview functions
+function showRangePreview(startDate, endDate) {
+    // Clear any existing preview
+    clearRangePreview();
+    
+    // Determine the actual start and end dates
+    const start = startDate < endDate ? startDate : endDate;
+    const end = startDate < endDate ? endDate : startDate;
+    
+    // Get all day elements
+    const calendarDays = document.getElementById('calendarDays');
+    const dayElements = calendarDays.querySelectorAll('div');
+    
+    // Highlight the preview range
+    dayElements.forEach(dayElement => {
+        const dayText = dayElement.textContent;
+        if (dayText && !isNaN(dayText)) {
+            const day = parseInt(dayText);
+            const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+            
+            // Check if this date is in the preview range
+            if (date >= start && date <= end) {
+                // Don't override selected dates or today
+                if (!dayElement.classList.contains('selected') && !dayElement.classList.contains('today')) {
+                    dayElement.style.backgroundColor = '#e0f2fe';
+                    dayElement.style.color = '#0369a1';
+                    dayElement.classList.add('preview-range');
+                }
+            }
+        }
+    });
+}
+
+function clearRangePreview() {
+    // Get all day elements
+    const calendarDays = document.getElementById('calendarDays');
+    const dayElements = calendarDays.querySelectorAll('div');
+    
+    // Clear preview styling
+    dayElements.forEach(dayElement => {
+        if (dayElement.classList.contains('preview-range')) {
+            dayElement.style.backgroundColor = 'transparent';
+            dayElement.style.color = '';
+            dayElement.classList.remove('preview-range');
+        }
+    });
+}
+
+// Close calendar when clicking outside
+document.addEventListener('click', function(event) {
+    const calendar = document.getElementById('calendarWidget');
+    const input = document.getElementById('dateRangeDisplay');
+    
+    if (calendarVisible && !calendar.contains(event.target) && !input.contains(event.target) && !preventClose) {
+        toggleCalendar();
+    }
+});
+
+// Listen for Livewire updates to sync frontend state
+document.addEventListener('livewire:updated', function() {
+    console.log('Livewire updated event fired');
+    
+    // Update JavaScript variables when backend changes
+    const startDateValue = document.getElementById('startDate').value;
+    const endDateValue = document.getElementById('endDate').value;
+    
+    console.log('Hidden input values:', { startDateValue, endDateValue });
+    
+    if (startDateValue && endDateValue) {
+        selectedStartDate = new Date(startDateValue);
+        selectedEndDate = new Date(endDateValue);
+        console.log('Updated JavaScript variables:', { selectedStartDate, selectedEndDate });
+        updateDisplay();
+        generateCalendar();
+    }
+});
+
+// Function to sync frontend with backend
+function syncWithBackend() {
+    const startDateValue = document.getElementById('startDate').value;
+    const endDateValue = document.getElementById('endDate').value;
+    
+    console.log('Syncing with backend:', { startDateValue, endDateValue });
+    
+    if (startDateValue && endDateValue) {
+        selectedStartDate = new Date(startDateValue);
+        selectedEndDate = new Date(endDateValue);
+        updateDisplay();
+        generateCalendar();
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial values if they exist
+    const startDateValue = document.getElementById('startDate').value;
+    const endDateValue = document.getElementById('endDate').value;
+    
+    if (startDateValue && endDateValue) {
+        selectedStartDate = new Date(startDateValue);
+        selectedEndDate = new Date(endDateValue);
+        updateDisplay();
+    }
+});
+</script>
