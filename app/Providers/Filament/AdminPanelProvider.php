@@ -33,6 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->passwordReset()
             ->profile()
+            ->authGuard('web')
             ->brandLogo(asset('images/logo1.png'))
             ->brandLogoHeight('2.5rem')
             ->brandName('Náutica')
