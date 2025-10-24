@@ -8,12 +8,9 @@ use App\Models\Expense;
 use App\Models\Project;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 class ProjectExpenseTotalOverview extends BaseWidget
 {
-    use HasWidgetShield;
-    
     public ?Project $record;
 
     protected static ?string $pollingInterval = '5s';
