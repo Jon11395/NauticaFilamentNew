@@ -80,7 +80,28 @@ jobs:
               ]
             }
 
+--------------------------------------------------------------------------
+CÓMO DESPLEGAR CAMBIOS DE DEV A MAIN (PRODUCCIÓN):
+--------------------------------------------------------------------------
 
+Una vez que hayas probado todo en dev y esté listo para producción:
+
+Opción 1 - GitHub UI (Recomendado):
+1. Ir a GitHub → Pull Requests → New Pull Request
+2. Base: main, Compare: dev
+3. Crear el Pull Request
+4. Mergear el PR
+5. Esto activará automáticamente el deployment a producción
+
+Opción 2 - Command Line:
+```bash
+git checkout main
+git pull origin main
+git merge dev
+git push origin main
+```
+
+**Nota:** Al hacer push a main, GitHub Actions despliega automáticamente a producción (domcloud.co)
 
 
 
