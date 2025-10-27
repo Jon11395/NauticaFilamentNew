@@ -1,7 +1,7 @@
 name: Sync on DOM Cloud DEV
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   push:
     branches:
       - dev
