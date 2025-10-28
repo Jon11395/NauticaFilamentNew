@@ -1,4 +1,4 @@
-<div class="w-full">
+<div class="w-full" wire:ignore>
     {!! $content !!}
 </div>
 

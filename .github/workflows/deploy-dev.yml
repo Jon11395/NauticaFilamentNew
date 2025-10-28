@@ -24,6 +24,8 @@ jobs:
                 "git reset --hard origin/dev",
                 "git clean -fd",
                 "composer install --no-interaction --prefer-dist --optimize-autoloader",
+                "php artisan vendor:publish --tag=filament-config --force",
+                "php artisan vendor:publish --tag=filament-general-settings-views --force",
                 "npm install",
                 "npm run build",
                 "php artisan migrate --force",
