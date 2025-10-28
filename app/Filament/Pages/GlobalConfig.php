@@ -182,8 +182,21 @@ class GlobalConfig extends Page implements HasForms, HasActions
             'gmail_user_email' => 'string',
         ];
 
+        // Fields to exclude from saving (ViewField components like instructions and buttons)
+        $excludedFields = ['gmail_instructions', 'test_connection'];
+
         // Save each configuration to database
         foreach ($data as $key => $value) {
+            // Skip excluded fields
+            if (in_array($key, $excludedFields)) {
+                continue;
+            }
+
+            // Skip if value is null or empty and not explicitly set
+            if ($value === null || $value === '') {
+                continue;
+            }
+
             // Save the configuration (this will automatically log the activity)
             GlobalConfigModel::setValue(
                 $key,
