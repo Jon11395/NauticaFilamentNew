@@ -82,6 +82,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
                             ->label('Client ID de Gmail')
                             ->helperText('Encontrado en: Google Cloud Console > APIs y Servicios > Credenciales')
                             ->placeholder('Ingresa tu Client ID de OAuth de Gmail desde Google Cloud Console')
+                            ->dehydrated()
                             ->columnSpan(1),
 
                         TextInput::make('gmail_client_secret')
@@ -90,6 +91,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
                             ->revealable()
                             ->helperText('Mantén esto seguro y nunca lo compartas públicamente')
                             ->placeholder('Ingresa tu Client Secret de OAuth de Gmail')
+                            ->dehydrated()
                             ->columnSpan(1),
 
                         TextInput::make('gmail_refresh_token')
@@ -98,6 +100,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
                             ->revealable()
                             ->helperText('Obtén esto desde Google OAuth Playground usando los pasos anteriores')
                             ->placeholder('Ingresa tu Refresh Token de Gmail')
+                            ->dehydrated()
                             ->columnSpan(1),
 
                         TextInput::make('gmail_user_email')
@@ -105,6 +108,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
                             ->email()
                             ->helperText('La dirección de correo de la cuenta de Gmail que deseas acceder')
                             ->placeholder('Ingresa la dirección de correo de Gmail para conectar')
+                            ->dehydrated()
                             ->columnSpan(1),
 
                         ViewField::make('test_connection')
