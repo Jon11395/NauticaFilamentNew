@@ -6,6 +6,7 @@ use App\Models\GlobalConfig as GlobalConfigModel;
 use App\Policies\GlobalConfigPolicy;
 use Filament\Pages\Page;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
@@ -54,70 +55,81 @@ class GlobalConfig extends Page implements HasForms, HasActions
     {
         return $form
             ->schema([
-                Section::make('Configuraciones de Nómina')
-                    ->description('Configuraciones para el cálculo de salarios')
-                    ->schema([
-                        TextInput::make('night_work_bonus')
-                            ->label('Bono Trabajo Nocturno')
-                            ->prefix('₡')
-                            ->required()
-                            ->numeric()
-                            ->minValue(0)
-                            ->step(100)
-                            ->rules(['required', 'numeric', 'min:0'])
-                            ->helperText('Monto por día de trabajo nocturno'),
-                    ])
-                    ->compact()
-                    ->columns(1),
+                Tabs::make('SettingsTabs')
+                    ->tabs([
+                        Tabs\Tab::make('nomina')
+                            ->label('Nómina')
+                            ->icon('heroicon-o-currency-dollar')
+                            ->schema([
+                                Section::make('Configuraciones de Nómina')
+                                    ->description('Configuraciones para el cálculo de salarios')
+                                    ->schema([
+                                        TextInput::make('night_work_bonus')
+                                            ->label('Bono Trabajo Nocturno')
+                                            ->prefix('₡')
+                                            ->required()
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step(100)
+                                            ->rules(['required', 'numeric', 'min:0'])
+                                            ->helperText('Monto por día de trabajo nocturno'),
+                                    ])
+                                    ->compact()
+                                    ->columns(1),
+                            ]),
 
-                Section::make('Configuración de Gmail')
-                    ->description('Configuración de OAuth para conexión con Gmail API')
-                    ->icon('heroicon-o-envelope')
-                    ->schema([
-                        ViewField::make('gmail_instructions')
-                            ->view('filament.pages.gmail-instructions')
-                            ->columnSpan('full'),
+                        Tabs\Tab::make('gmail')
+                            ->label('Gmail')
+                            ->icon('heroicon-o-envelope')
+                            ->schema([
+                                Section::make('Configuración de Gmail')
+                                    ->description('Configuración de OAuth para conexión con Gmail API')
+                                    ->schema([
+                                        ViewField::make('gmail_instructions')
+                                            ->view('filament.pages.gmail-instructions')
+                                            ->columnSpan('full'),
 
-                        TextInput::make('gmail_client_id')
-                            ->label('Client ID de Gmail')
-                            ->helperText('Encontrado en: Google Cloud Console > APIs y Servicios > Credenciales')
-                            ->placeholder('Ingresa tu Client ID de OAuth de Gmail desde Google Cloud Console')
-                            ->dehydrated()
-                            ->columnSpan(1),
+                                        TextInput::make('gmail_client_id')
+                                            ->label('Client ID de Gmail')
+                                            ->helperText('Encontrado en: Google Cloud Console > APIs y Servicios > Credenciales')
+                                            ->placeholder('Ingresa tu Client ID de OAuth de Gmail desde Google Cloud Console')
+                                            ->dehydrated()
+                                            ->columnSpan(1),
 
-                        TextInput::make('gmail_client_secret')
-                            ->label('Client Secret de Gmail')
-                            ->password()
-                            ->revealable()
-                            ->helperText('Mantén esto seguro y nunca lo compartas públicamente')
-                            ->placeholder('Ingresa tu Client Secret de OAuth de Gmail')
-                            ->dehydrated()
-                            ->columnSpan(1),
+                                        TextInput::make('gmail_client_secret')
+                                            ->label('Client Secret de Gmail')
+                                            ->password()
+                                            ->revealable()
+                                            ->helperText('Mantén esto seguro y nunca lo compartas públicamente')
+                                            ->placeholder('Ingresa tu Client Secret de OAuth de Gmail')
+                                            ->dehydrated()
+                                            ->columnSpan(1),
 
-                        TextInput::make('gmail_refresh_token')
-                            ->label('Refresh Token de Gmail')
-                            ->password()
-                            ->revealable()
-                            ->helperText('Obtén esto desde Google OAuth Playground usando los pasos anteriores')
-                            ->placeholder('Ingresa tu Refresh Token de Gmail')
-                            ->dehydrated()
-                            ->columnSpan(1),
+                                        TextInput::make('gmail_refresh_token')
+                                            ->label('Refresh Token de Gmail')
+                                            ->password()
+                                            ->revealable()
+                                            ->helperText('Obtén esto desde Google OAuth Playground usando los pasos anteriores')
+                                            ->placeholder('Ingresa tu Refresh Token de Gmail')
+                                            ->dehydrated()
+                                            ->columnSpan(1),
 
-                        TextInput::make('gmail_user_email')
-                            ->label('Correo Electrónico de Usuario de Gmail')
-                            ->email()
-                            ->helperText('La dirección de correo de la cuenta de Gmail que deseas acceder')
-                            ->placeholder('Ingresa la dirección de correo de Gmail para conectar')
-                            ->dehydrated()
-                            ->columnSpan(1),
+                                        TextInput::make('gmail_user_email')
+                                            ->label('Correo Electrónico de Usuario de Gmail')
+                                            ->email()
+                                            ->helperText('La dirección de correo de la cuenta de Gmail que deseas acceder')
+                                            ->placeholder('Ingresa la dirección de correo de Gmail para conectar')
+                                            ->dehydrated()
+                                            ->columnSpan(1),
 
-                        ViewField::make('test_connection')
-                            ->view('filament.pages.gmail-test-button')
-                            ->columnSpan('full'),
-                    ])
-                    ->columns(2)
-                    ->collapsible()
-                    ->collapsed(false),
+                                        ViewField::make('test_connection')
+                                            ->view('filament.pages.gmail-test-button')
+                                            ->columnSpan('full'),
+                                    ])
+                                    ->columns(2)
+                                    ->compact(),
+                            ]),
+                    ]),
             ])
             ->statePath('data');
     }
