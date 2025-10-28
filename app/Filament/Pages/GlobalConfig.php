@@ -10,6 +10,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ViewField;
 use Filament\Forms\Form;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -68,6 +69,51 @@ class GlobalConfig extends Page implements HasForms, HasActions
                     ])
                     ->compact()
                     ->columns(1),
+
+                Section::make('Configuración de Gmail')
+                    ->description('Configuración de OAuth para conexión con Gmail API')
+                    ->icon('heroicon-o-envelope')
+                    ->schema([
+                        ViewField::make('gmail_instructions')
+                            ->view('filament.pages.gmail-instructions')
+                            ->columnSpan('full'),
+
+                        TextInput::make('gmail_client_id')
+                            ->label('Client ID de Gmail')
+                            ->helperText('Encontrado en: Google Cloud Console > APIs y Servicios > Credenciales')
+                            ->placeholder('Ingresa tu Client ID de OAuth de Gmail desde Google Cloud Console')
+                            ->columnSpan(1),
+
+                        TextInput::make('gmail_client_secret')
+                            ->label('Client Secret de Gmail')
+                            ->password()
+                            ->revealable()
+                            ->helperText('Mantén esto seguro y nunca lo compartas públicamente')
+                            ->placeholder('Ingresa tu Client Secret de OAuth de Gmail')
+                            ->columnSpan(1),
+
+                        TextInput::make('gmail_refresh_token')
+                            ->label('Refresh Token de Gmail')
+                            ->password()
+                            ->revealable()
+                            ->helperText('Obtén esto desde Google OAuth Playground usando los pasos anteriores')
+                            ->placeholder('Ingresa tu Refresh Token de Gmail')
+                            ->columnSpan(1),
+
+                        TextInput::make('gmail_user_email')
+                            ->label('Correo Electrónico de Usuario de Gmail')
+                            ->email()
+                            ->helperText('La dirección de correo de la cuenta de Gmail que deseas acceder')
+                            ->placeholder('Ingresa la dirección de correo de Gmail para conectar')
+                            ->columnSpan(1),
+
+                        ViewField::make('test_connection')
+                            ->view('filament.pages.gmail-test-button')
+                            ->columnSpan('full'),
+                    ])
+                    ->columns(2)
+                    ->collapsible()
+                    ->collapsed(false),
             ])
             ->statePath('data');
     }
@@ -127,13 +173,22 @@ class GlobalConfig extends Page implements HasForms, HasActions
 
     private function saveConfigData(array $data): void
     {
+        // Define the type for each field
+        $fieldTypes = [
+            'night_work_bonus' => 'integer',
+            'gmail_client_id' => 'string',
+            'gmail_client_secret' => 'string',
+            'gmail_refresh_token' => 'string',
+            'gmail_user_email' => 'string',
+        ];
+
         // Save each configuration to database
         foreach ($data as $key => $value) {
             // Save the configuration (this will automatically log the activity)
             GlobalConfigModel::setValue(
                 $key,
                 $value,
-                'integer', // For night_work_bonus
+                $fieldTypes[$key] ?? 'string',
                 $this->getConfigDescription($key)
             );
         }
@@ -143,9 +198,78 @@ class GlobalConfig extends Page implements HasForms, HasActions
     {
         $descriptions = [
             'night_work_bonus' => 'Monto en colones por día de trabajo nocturno',
+            'gmail_client_id' => 'Client ID de OAuth de Gmail desde Google Cloud Console',
+            'gmail_client_secret' => 'Client Secret de OAuth de Gmail',
+            'gmail_refresh_token' => 'Refresh Token de Gmail para acceso API',
+            'gmail_user_email' => 'Correo electrónico de cuenta de Gmail',
         ];
 
         return $descriptions[$key] ?? '';
+    }
+
+    public function testGmailConnection(): void
+    {
+        try {
+            $data = $this->form->getState();
+
+            // Check if credentials are provided
+            if (empty($data['gmail_client_id']) || empty($data['gmail_client_secret'])) {
+                Notification::make()
+                    ->title('Faltan credenciales')
+                    ->body('Por favor, proporcione su Client ID y Client Secret de Gmail primero.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            if (empty($data['gmail_refresh_token'])) {
+                Notification::make()
+                    ->title('Falta el Refresh Token')
+                    ->body('Por favor, proporcione su Refresh Token de Gmail primero.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            // Temporarily save credentials to test connection
+            GlobalConfigModel::setValue('gmail_client_id', $data['gmail_client_id'] ?? '', 'string', 'Client ID de Gmail');
+            GlobalConfigModel::setValue('gmail_client_secret', $data['gmail_client_secret'] ?? '', 'string', 'Client Secret de Gmail');
+            GlobalConfigModel::setValue('gmail_refresh_token', $data['gmail_refresh_token'] ?? '', 'string', 'Refresh Token de Gmail');
+            GlobalConfigModel::setValue('gmail_user_email', $data['gmail_user_email'] ?? '', 'string', 'Email de usuario de Gmail');
+
+            // Use the GmailService to test the connection
+            if (class_exists('\App\Services\GmailService')) {
+                $gmailService = new \App\Services\GmailService();
+
+                if ($gmailService->initialize()) {
+                    $emails = $gmailService->getUnreadEmails(20);
+                    
+                    Notification::make()
+                        ->title('Conexión exitosa! ✓')
+                        ->body('La conexión de Gmail está funcionando correctamente! Se encontraron ' . count($emails) . ' correos electrónicos no leídos.')
+                        ->success()
+                        ->send();
+                } else {
+                    Notification::make()
+                        ->title('Conexión fallida')
+                        ->body('No se pudo inicializar el servicio de Gmail. Por favor, verifique sus credenciales y pruebe nuevamente.')
+                        ->danger()
+                        ->send();
+                }
+            } else {
+                Notification::make()
+                    ->title('Servicio no encontrado')
+                    ->body('La clase GmailService no fue encontrada. Por favor, asegúrese de que exista.')
+                    ->danger()
+                    ->send();
+            }
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error de conexión')
+                ->body('Ocurrió un error al probar la conexión: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 
     /**

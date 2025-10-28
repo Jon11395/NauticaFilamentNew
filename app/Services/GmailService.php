@@ -71,17 +71,22 @@ class GmailService
     }
 
     /**
-     * Get Gmail configuration from general settings
+     * Get Gmail configuration from global config
      */
     protected function getGmailConfig(): ?array
     {
-        $generalSetting = \Joaopaulolndev\FilamentGeneralSettings\Models\GeneralSetting::first();
+        $config = [];
         
-        if (!$generalSetting || !$generalSetting->more_configs) {
+        $config['gmail_client_id'] = \App\Models\GlobalConfig::getValue('gmail_client_id');
+        $config['gmail_client_secret'] = \App\Models\GlobalConfig::getValue('gmail_client_secret');
+        $config['gmail_refresh_token'] = \App\Models\GlobalConfig::getValue('gmail_refresh_token');
+        $config['gmail_user_email'] = \App\Models\GlobalConfig::getValue('gmail_user_email');
+        
+        if (empty($config['gmail_client_id']) && empty($config['gmail_client_secret'])) {
             return null;
         }
-
-        return $generalSetting->more_configs;
+        
+        return $config;
     }
 
 
