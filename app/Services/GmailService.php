@@ -97,32 +97,39 @@ class GmailService
     {
         if (!$this->service) {
             if (!$this->initialize()) {
-                return [];
+                throw new \Exception('Failed to initialize Gmail service');
             }
         }
 
-        try {
-            // Refresh the access token if it's expired
-            if ($this->client->isAccessTokenExpired()) {
-                Log::info('Access token expired, refreshing...');
+        // Refresh the access token if it's expired
+        if ($this->client->isAccessTokenExpired()) {
+            Log::info('Access token expired, refreshing...');
+            try {
                 $this->client->fetchAccessTokenWithRefreshToken();
                 Log::info('Token refreshed successfully');
+            } catch (\Exception $e) {
+                Log::error('Failed to refresh token: ' . $e->getMessage());
+                throw new \Exception('Failed to refresh access token. Invalid credentials.');
             }
-            
-            $userEmail = $this->getGmailConfig()['gmail_user_email'] ?? 'me';
-            
-            // Search for unread emails
-            $query = 'is:unread';
-            
+        }
+        
+        $userEmail = $this->getGmailConfig()['gmail_user_email'] ?? 'me';
+        
+        // Search for unread emails
+        $query = 'is:unread';
+        
+        try {
             $results = $this->service->users_messages->listUsersMessages($userEmail, [
                 'q' => $query,
                 'maxResults' => $maxResults,
             ]);
 
             $messages = [];
-            foreach ($results->getMessages() as $message) {
-                $msg = $this->service->users_messages->get($userEmail, $message->getId());
-                $messages[] = $this->formatMessage($msg);
+            if ($results && $results->getMessages()) {
+                foreach ($results->getMessages() as $message) {
+                    $msg = $this->service->users_messages->get($userEmail, $message->getId());
+                    $messages[] = $this->formatMessage($msg);
+                }
             }
 
             return $messages;
@@ -139,7 +146,7 @@ class GmailService
                 ]));
             }
             
-            return [];
+            throw $e;
         }
     }
 

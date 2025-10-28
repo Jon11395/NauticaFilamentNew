@@ -270,7 +270,17 @@ class GlobalConfig extends Page implements HasForms, HasActions
             if (class_exists('\App\Services\GmailService')) {
                 $gmailService = new \App\Services\GmailService();
 
-                if ($gmailService->initialize()) {
+                try {
+                    if (!$gmailService->initialize()) {
+                        Notification::make()
+                            ->title('Conexión fallida')
+                            ->body('No se pudo inicializar el servicio de Gmail. Por favor, verifique sus credenciales y pruebe nuevamente.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+
+                    // Try to get unread emails to verify the connection
                     $emails = $gmailService->getUnreadEmails(20);
                     
                     Notification::make()
@@ -278,10 +288,10 @@ class GlobalConfig extends Page implements HasForms, HasActions
                         ->body('La conexión de Gmail está funcionando correctamente! Se encontraron ' . count($emails) . ' correos electrónicos no leídos.')
                         ->success()
                         ->send();
-                } else {
+                } catch (\Exception $e) {
                     Notification::make()
-                        ->title('Conexión fallida')
-                        ->body('No se pudo inicializar el servicio de Gmail. Por favor, verifique sus credenciales y pruebe nuevamente.')
+                        ->title('Error de conexión')
+                        ->body('No se pudo conectar con Gmail: ' . $e->getMessage())
                         ->danger()
                         ->send();
                 }
