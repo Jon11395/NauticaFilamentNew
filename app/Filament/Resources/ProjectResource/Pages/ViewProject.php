@@ -13,7 +13,6 @@ use App\Filament\Resources\ProjectResource\Widgets\ProjectExpenseOverview;
 use App\Filament\Resources\ProjectResource\Widgets\ProjectDifferenceOverview;
 use App\Filament\Resources\ProjectResource\Widgets\ProjectExpenseTotalOverview;
 use App\Filament\Resources\ProjectResource\Widgets\ProjectProfitabilityWidget;
-use App\Filament\Resources\ProjectResource\Widgets\ExpenseBreakdownWidget;
 use App\Filament\Resources\ProjectResource\Widgets\PayrollSummaryWidget;
 use App\Filament\Resources\ProjectResource\Widgets\EmployeeCountWidget;
 
@@ -56,7 +55,6 @@ class ViewProject extends ViewRecord
             // === OPERATIONAL INSIGHTS SECTION ===
             PayrollSummaryWidget::class,
             EmployeeCountWidget::class,
-            ExpenseBreakdownWidget::class,
             
         ];
     }

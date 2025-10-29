@@ -122,12 +122,21 @@ class FixedPayrollTable extends Component
         foreach ($this->employees as $employee) {
             $employeeId = $employee->id;
             
-            // Start with empty salary field for all employees
-            $salarioBase = 0;
+            // Check if employee data exists in session
+            $sessionData = session('fixed_payroll_data_' . $this->projectId, []);
+            $existingData = $sessionData[$employeeId] ?? [];
+            
+            $salarioBase = $existingData['salario_base'] ?? 0;
+            $adicionales = $existingData['adicionales'] ?? 0;
+            $rebajos = $existingData['rebajos'] ?? 0;
+            $ccss = $existingData['ccss'] ?? 0;
             
             $this->employeeTotals[$employeeId] = [
                 'salario_base' => $salarioBase,
-                'total_final' => $salarioBase
+                'adicionales' => $adicionales,
+                'rebajos' => $rebajos,
+                'ccss' => $ccss,
+                'total_final' => $salarioBase + $adicionales - $rebajos - $ccss
             ];
         }
     }
@@ -137,8 +146,13 @@ class FixedPayrollTable extends Component
         if (isset($this->employeeTotals[$employeeId])) {
             $this->employeeTotals[$employeeId][$field] = floatval($value);
             
-            // For fixed payroll, total final equals the salary
-            $this->employeeTotals[$employeeId]['total_final'] = floatval($value);
+            // Recalculate total final
+            $salarioBase = floatval($this->employeeTotals[$employeeId]['salario_base'] ?? 0);
+            $adicionales = floatval($this->employeeTotals[$employeeId]['adicionales'] ?? 0);
+            $rebajos = floatval($this->employeeTotals[$employeeId]['rebajos'] ?? 0);
+            $ccss = floatval($this->employeeTotals[$employeeId]['ccss'] ?? 0);
+            
+            $this->employeeTotals[$employeeId]['total_final'] = $salarioBase + $adicionales - $rebajos - $ccss;
         }
     }
     
@@ -150,19 +164,29 @@ class FixedPayrollTable extends Component
             $employeeId = $parts[0];
             $field = $parts[1];
             
-            if (isset($this->employeeTotals[$employeeId]) && $field === 'salario_base') {
-                // Validate the input value
-                $numericValue = $this->validateNumericInput($value, $field);
-                $this->employeeTotals[$employeeId][$field] = $numericValue;
+            if (isset($this->employeeTotals[$employeeId])) {
+                // List of fields that can be edited
+                $editableFields = ['salario_base', 'adicionales', 'rebajos', 'ccss'];
                 
-                // For fixed payroll, total final equals the salary
-                $this->employeeTotals[$employeeId]['total_final'] = $numericValue;
-                
-                // Store in session for other components to access
-                session(['fixed_payroll_data_' . $this->projectId => $this->employeeTotals]);
-                
-                // Force session save
-                session()->save();
+                if (in_array($field, $editableFields)) {
+                    // Validate the input value
+                    $numericValue = $this->validateNumericInput($value, $field);
+                    $this->employeeTotals[$employeeId][$field] = $numericValue;
+                    
+                    // Recalculate total final
+                    $salarioBase = floatval($this->employeeTotals[$employeeId]['salario_base'] ?? 0);
+                    $adicionales = floatval($this->employeeTotals[$employeeId]['adicionales'] ?? 0);
+                    $rebajos = floatval($this->employeeTotals[$employeeId]['rebajos'] ?? 0);
+                    $ccss = floatval($this->employeeTotals[$employeeId]['ccss'] ?? 0);
+                    
+                    $this->employeeTotals[$employeeId]['total_final'] = $salarioBase + $adicionales - $rebajos - $ccss;
+                    
+                    // Store in session for other components to access
+                    session(['fixed_payroll_data_' . $this->projectId => $this->employeeTotals]);
+                    
+                    // Force session save
+                    session()->save();
+                }
             }
         }
     }

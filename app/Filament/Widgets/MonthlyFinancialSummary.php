@@ -78,7 +78,7 @@ class MonthlyFinancialSummary extends BaseWidget
                 ->descriptionIcon('heroicon-o-play-circle')
                 ->color('success'),
 
-            Stat::make('Cumplimiento de Ofertas', number_format($completionRate, 1) . '%')
+            Stat::make('Avance de Ofertas', number_format($completionRate, 1) . '%')
                 ->description('₡ ' . number_format($totalActualRevenue, 2) . ' de ₡ ' . number_format($totalOffers, 2))
                 ->descriptionIcon($completionRate >= 80 ? 'heroicon-o-arrow-trending-up' : 'heroicon-o-arrow-trending-down')
                 ->color($completionRate >= 80 ? 'success' : 'warning'),

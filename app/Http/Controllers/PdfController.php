@@ -111,13 +111,27 @@ class PdfController extends Controller
             $hourlyRate = $employee->hourly_salary;
             $extraHourRate = $hourlyRate * 1.5;
             
+            // Parse period to get actual date range
+            $periodText = $spreadsheet->period ?? '';
+            $startDate = Carbon::parse($spreadsheet->date);
+            $endDate = Carbon::parse($spreadsheet->date)->addDays(13); // default fallback
+            
+            // Try to parse the period string if available
+            if (preg_match('/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/', $periodText, $matches)) {
+                try {
+                    $startDate = Carbon::createFromFormat('d/m/Y', trim($matches[1] . '/' . $matches[2] . '/' . $matches[3]));
+                    $endDate = Carbon::createFromFormat('d/m/Y', trim($matches[4] . '/' . $matches[5] . '/' . $matches[6]));
+                } catch (\Exception $e) {
+                    // If parsing fails, use default
+                    $startDate = Carbon::parse($spreadsheet->date);
+                    $endDate = Carbon::parse($spreadsheet->date)->addDays(13);
+                }
+            }
+            
             // Calculate hours from timesheets if available
             $timesheets = $employee->timesheets()
                 ->where('project_id', $spreadsheet->project_id)
-                ->whereBetween('date', [
-                    Carbon::parse($spreadsheet->date)->startOfDay(),
-                    Carbon::parse($spreadsheet->date)->addDays(13)->endOfDay()
-                ])
+                ->whereBetween('date', [$startDate->startOfDay(), $endDate->endOfDay()])
                 ->get();
             
             $normalHours = $timesheets->sum('hours');
@@ -127,9 +141,22 @@ class PdfController extends Controller
             // Get base salary from payment record
             $baseSalary = $payment->salary ?? 0;
             
-            // Determine employee type: hourly vs fixed
-            $hasTimesheetData = $timesheets->count() > 0 && ($normalHours > 0 || $extraHours > 0);
-            $employeeType = $hasTimesheetData ? 'hourly' : 'fixed';
+            // Determine employee type: hourly vs fixed based on payment description
+            // Check if description contains "horas" (hourly) or "fija" (fixed)
+            $description = $payment->description ?? '';
+            $isHourlyDescription = str_contains(strtolower($description), 'horas');
+            $isFixedDescription = str_contains(strtolower($description), 'fija');
+            
+            // Determine employee type
+            if ($isHourlyDescription) {
+                $employeeType = 'hourly';
+            } elseif ($isFixedDescription) {
+                $employeeType = 'fixed';
+            } else {
+                // Fallback: check timesheets
+                $hasTimesheetData = $timesheets->count() > 0 && ($normalHours > 0 || $extraHours > 0);
+                $employeeType = $hasTimesheetData ? 'hourly' : 'fixed';
+            }
             
             // Calculate amounts
             $normalHoursAmount = $normalHours * $hourlyRate;
@@ -207,8 +234,9 @@ class PdfController extends Controller
             $pdf = Pdf::loadView('pdf.salary-receipt', $data)
                 ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
             
-            // Generate filename
-            $filename = 'colilla_' . str_replace(' ', '_', $employee->name) . '_' . now()->format('Y_m_d_H_i_s') . '.pdf';
+            // Generate filename with generation date
+            $timestamp = \Carbon\Carbon::now()->format('Y_m_d');
+            $filename = str_replace(' ', '_', $employee->name) . '_' . $timestamp . '.pdf';
             
             // Return PDF download
             return $pdf->stream($filename);
@@ -245,13 +273,27 @@ class PdfController extends Controller
                     $hourlyRate = $employee->hourly_salary;
                     $extraHourRate = $hourlyRate * 1.5;
                     
+                    // Parse period to get actual date range
+                    $periodText = $spreadsheet->period ?? '';
+                    $startDate = Carbon::parse($spreadsheet->date);
+                    $endDate = Carbon::parse($spreadsheet->date)->addDays(13); // default fallback
+                    
+                    // Try to parse the period string if available
+                    if (preg_match('/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/', $periodText, $matches)) {
+                        try {
+                            $startDate = Carbon::createFromFormat('d/m/Y', trim($matches[1] . '/' . $matches[2] . '/' . $matches[3]));
+                            $endDate = Carbon::createFromFormat('d/m/Y', trim($matches[4] . '/' . $matches[5] . '/' . $matches[6]));
+                        } catch (\Exception $e) {
+                            // If parsing fails, use default
+                            $startDate = Carbon::parse($spreadsheet->date);
+                            $endDate = Carbon::parse($spreadsheet->date)->addDays(13);
+                        }
+                    }
+                    
                     // Calculate hours from timesheets if available
                     $timesheets = $employee->timesheets()
                         ->where('project_id', $spreadsheet->project_id)
-                        ->whereBetween('date', [
-                            Carbon::parse($spreadsheet->date)->startOfDay(),
-                            Carbon::parse($spreadsheet->date)->addDays(13)->endOfDay()
-                        ])
+                        ->whereBetween('date', [$startDate->startOfDay(), $endDate->endOfDay()])
                         ->get();
                     
                     $normalHours = $timesheets->sum('hours');
@@ -261,9 +303,22 @@ class PdfController extends Controller
                     // Get base salary from payment record
                     $baseSalary = $payment->salary ?? 0;
                     
-                    // Determine employee type: hourly vs fixed
-                    $hasTimesheetData = $timesheets->count() > 0 && ($normalHours > 0 || $extraHours > 0);
-                    $employeeType = $hasTimesheetData ? 'hourly' : 'fixed';
+                    // Determine employee type: hourly vs fixed based on payment description
+                    // Check if description contains "horas" (hourly) or "fija" (fixed)
+                    $description = $payment->description ?? '';
+                    $isHourlyDescription = str_contains(strtolower($description), 'horas');
+                    $isFixedDescription = str_contains(strtolower($description), 'fija');
+                    
+                    // Determine employee type
+                    if ($isHourlyDescription) {
+                        $employeeType = 'hourly';
+                    } elseif ($isFixedDescription) {
+                        $employeeType = 'fixed';
+                    } else {
+                        // Fallback: check timesheets
+                        $hasTimesheetData = $timesheets->count() > 0 && ($normalHours > 0 || $extraHours > 0);
+                        $employeeType = $hasTimesheetData ? 'hourly' : 'fixed';
+                    }
                     
                     // Calculate amounts
                     $normalHoursAmount = $normalHours * $hourlyRate;
@@ -329,10 +384,11 @@ class PdfController extends Controller
                         'holiday_amount' => number_format($payment->additionals ?? 0, 2, ',', ' '),
                         'base_salary' => number_format($baseSalary, 2, ',', ' '),
                         'employee_type' => $employeeType,
-                        'total_deductions' => number_format($totalDeductions, 2, ',', ' '),
                         'gross_salary' => number_format($grossSalary, 2, ',', ' '),
+                        'ccss_rate' => $ccssAmount > 0 ? number_format(($ccssAmount / $grossSalary) * 100, 2, ',', ' ') . '%' : '0,00%',
                         'ccss_amount' => number_format($ccssAmount, 2, ',', ' '),
                         'rebates_amount' => number_format($payment->rebates ?? 0, 2, ',', ' '),
+                        'total_deductions' => number_format($totalDeductions, 2, ',', ' '),
                         'net_pay' => number_format($netPay, 2, ',', ' '),
                         'generated_date' => now()->format('d/m/Y H:i:s')
                     ];
@@ -341,8 +397,9 @@ class PdfController extends Controller
                     $pdf = Pdf::loadView('pdf.salary-receipt', $data)
                         ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
                     
-                    // Generate filename
-                    $filename = 'colilla_' . str_replace(' ', '_', $employee->name) . '_' . now()->format('Y_m_d_H_i_s') . '.pdf';
+                    // Generate filename with generation date
+                    $timestamp = \Carbon\Carbon::now()->format('Y_m_d');
+                    $filename = str_replace(' ', '_', $employee->name) . '_' . $timestamp . '.pdf';
                     $filePath = $tempDir . '/' . $filename;
                     
                     // Save PDF to temporary directory
@@ -359,8 +416,9 @@ class PdfController extends Controller
                 abort(500, 'No se pudieron generar las colillas');
             }
             
-            // Create ZIP file
-            $zipFilename = 'colillas_' . now()->format('Y_m_d_H_i_s') . '.zip';
+            // Create ZIP file with generation date
+            $generationDate = \Carbon\Carbon::now()->format('Y_m_d');
+            $zipFilename = 'colillas_' . $generationDate . '.zip';
             $zipPath = storage_path('app/temp/' . $zipFilename);
             
             $zip = new ZipArchive();
