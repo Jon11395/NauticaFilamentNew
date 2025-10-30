@@ -384,12 +384,19 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                                                     $employeesData = $employees->map(function ($employee) use ($fixedPayrollData) {
                                                         $employeeData = $fixedPayrollData[$employee->id] ?? [];
                                                         $salary = $employeeData['salario_base'] ?? 0;
+                                                        $adicionales = $employeeData['adicionales'] ?? 0;
+                                                        $rebajos = $employeeData['rebajos'] ?? 0;
+                                                        $ccss = $employeeData['ccss'] ?? 0;
+                                                        $salarioTotal = $salary + $adicionales - $rebajos - $ccss;
 
                                                         return [
                                                             'id' => $employee->id,
                                                             'name' => $employee->name,
                                                             'salario_base' => $salary,
-                                                            'salario_total' => $salary,
+                                                            'adicionales' => $adicionales,
+                                                            'rebajos' => $rebajos,
+                                                            'ccss' => $ccss,
+                                                            'salario_total' => $salarioTotal,
                                                         ];
                                                     });
                                                 }
@@ -404,7 +411,7 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                                                 'dateFrom' => $dateFrom,
                                                 'dateTo' => $dateTo,
                                                 'projectId' => $projectId,
-                                                'payrollType' => $payrollType,
+                                                'payrollType' => $payrollType, // Pass payroll type explicitly
                                                 'employees' => $employeesData,
                                                 'totals' => $totals
                                             ];

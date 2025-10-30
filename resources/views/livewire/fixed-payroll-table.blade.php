@@ -127,8 +127,12 @@
             <table class="w-full divide-y divide-gray-200" id="fixed-payroll-table">
                 <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                     <tr>
-                        <th class="w-3/4 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">Empleado</th>
-                        <th class="w-1/4 px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Salario</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">Empleado</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">Salario Base</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">Adicionales</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">Rebajos</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">CCSS</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Final</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -136,27 +140,17 @@
                         @php
                             $employeeId = $employee->id;
                             $employeeName = $employee->name;
+                            $salarioBase = $employeeTotals[$employeeId]['salario_base'] ?? 0;
+                            $adicionales = $employeeTotals[$employeeId]['adicionales'] ?? 0;
+                            $rebajos = $employeeTotals[$employeeId]['rebajos'] ?? 0;
+                            $ccss = $employeeTotals[$employeeId]['ccss'] ?? 0;
+                            $totalFinal = $employeeTotals[$employeeId]['total_final'] ?? 0;
                         @endphp
                         
                         <tr class="hover:bg-blue-50 transition-colors duration-150 group">
-                            <td class="w-3/4 px-3 py-2 text-sm font-bold text-gray-900 border-r border-gray-300">
-                                <span>{{ $employeeName }}</span>
-                            </td>
-                            <td class="w-1/4 px-3 py-2 text-center">
-                                <div class="flex items-center justify-center space-x-2">
-                                    <div class="relative flex-1">
-                                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium text-gray-600">₡</span>
-                                        <x-filament::input.wrapper>
-                                            <x-filament::input 
-                                                type="number" 
-                                                wire:model.blur="employeeTotals.{{ $employeeId }}.salario_base"
-                                                placeholder="0.00"
-                                                class="text-center pl-8"
-                                                min="0"
-                                                step="0.01"
-                                                title="Ingrese el salario del empleado" />
-                                        </x-filament::input.wrapper>
-                                    </div>
+                            <td class="px-3 py-2 text-sm font-bold text-gray-900 border-r border-gray-300">
+                                <div class="flex items-center justify-between">
+                                    <span>{{ $employeeName }}</span>
                                     <button wire:click="removeEmployee({{ $employeeId }})" 
                                             type="button"
                                             class="opacity-30 group-hover:opacity-100 text-red-600 hover:text-red-800 transition-opacity duration-200 p-1 rounded-full hover:bg-red-100"
@@ -168,12 +162,85 @@
                                     </button>
                                 </div>
                             </td>
+                            <td class="px-3 py-2 text-center border-r border-gray-200">
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium text-gray-600">₡</span>
+                                    <x-filament::input.wrapper>
+                                        <x-filament::input 
+                                            type="text" 
+                                            wire:model.blur="employeeTotals.{{ $employeeId }}.salario_base"
+                                            placeholder="0.00"
+                                            class="text-center pl-8"
+                                            min="0"
+                                            step="0.01"
+                                            x-data="{}"
+                                            x-on:input="$el.value = $el.value.replace(/[^0-9.,]/g, '').replace(/(\..*)\./g, '$1')"
+                                            title="Ingrese un valor mayor o igual a 0" />
+                                    </x-filament::input.wrapper>
+                                </div>
+                            </td>
+                            <td class="px-3 py-2 text-center border-r border-gray-200">
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium text-gray-600">₡</span>
+                                    <x-filament::input.wrapper>
+                                        <x-filament::input 
+                                            type="text" 
+                                            wire:model.blur="employeeTotals.{{ $employeeId }}.adicionales"
+                                            placeholder="0.00"
+                                            class="text-center pl-8"
+                                            min="0"
+                                            step="0.01"
+                                            x-data="{}"
+                                            x-on:input="$el.value = $el.value.replace(/[^0-9.,]/g, '').replace(/(\..*)\./g, '$1')"
+                                            title="Ingrese un valor mayor o igual a 0" />
+                                    </x-filament::input.wrapper>
+                                </div>
+                            </td>
+                            <td class="px-3 py-2 text-center border-r border-gray-200">
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium text-gray-600">₡</span>
+                                    <x-filament::input.wrapper>
+                                        <x-filament::input 
+                                            type="text" 
+                                            wire:model.blur="employeeTotals.{{ $employeeId }}.rebajos"
+                                            placeholder="0.00"
+                                            class="text-center pl-8"
+                                            min="0"
+                                            step="0.01"
+                                            x-data="{}"
+                                            x-on:input="$el.value = $el.value.replace(/[^0-9.,]/g, '').replace(/(\..*)\./g, '$1')"
+                                            title="Ingrese un valor mayor o igual a 0" />
+                                    </x-filament::input.wrapper>
+                                </div>
+                            </td>
+                            <td class="px-3 py-2 text-center border-r border-gray-200">
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium text-gray-600">₡</span>
+                                    <x-filament::input.wrapper>
+                                        <x-filament::input 
+                                            type="text" 
+                                            wire:model.blur="employeeTotals.{{ $employeeId }}.ccss"
+                                            placeholder="0.00"
+                                            class="text-center pl-8"
+                                            min="0"
+                                            step="0.01"
+                                            x-data="{}"
+                                            x-on:input="$el.value = $el.value.replace(/[^0-9.,]/g, '').replace(/(\..*)\./g, '$1')"
+                                            title="Ingrese un valor mayor o igual a 0" />
+                                    </x-filament::input.wrapper>
+                                </div>
+                            </td>
+                            <td class="px-3 py-2 text-center bg-green-50">
+                                <div class="text-sm font-bold text-green-700">
+                                    ₡{{ number_format($totalFinal, 2) }}
+                                </div>
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot class="bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 border-t-2 border-slate-200">
                     <tr style="background-color: #c4c9ce55;">
-                        <td colspan="2" class="px-4 py-2">
+                        <td colspan="6" class="px-4 py-2">
                             <div class="flex items-center justify-between text-xs text-slate-500 font-medium">
                                 <span>{{ $employees->count() }} empleado{{ $employees->count() !== 1 ? 's' : '' }} registrado{{ $employees->count() !== 1 ? 's' : '' }}</span>
                                 <span>Período: {{ $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : 'N/A' }} - {{ $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y') : 'N/A' }}</span>
@@ -181,10 +248,10 @@
                         </td>
                     </tr>
                     <tr class="border-t border-slate-200">
-                        <td class="w-3/4 px-4 py-4 text-sm font-bold text-slate-800 bg-slate-100 border-r border-slate-200">
+                        <td colspan="5" class="px-4 py-4 text-sm font-bold text-slate-800 bg-slate-100 border-r border-slate-200">
                             TOTAL GENERAL
                         </td>
-                        <td class="w-1/4 px-3 py-4 text-center bg-gradient-to-r from-emerald-50 to-green-50 border-l-2 border-emerald-300">
+                        <td class="px-3 py-4 text-center bg-gradient-to-r from-emerald-50 to-green-50 border-l-2 border-emerald-300">
                             <div class="text-lg font-bold text-emerald-800">
                                 ₡{{ number_format($this->grandTotals['total_final'], 2) }}
                             </div>

@@ -1,4 +1,4 @@
-<div class="w-full">
+<div class="w-full" wire:key="gmail-instructions-html">
     {!! $content !!}
 </div>
 

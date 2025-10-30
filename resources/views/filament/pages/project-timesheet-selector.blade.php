@@ -302,7 +302,7 @@
                                                     max="24" 
                                                     value="{{ $timesheet ? $timesheet->hours : '' }}"
                                                     id="regular-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}"
-                                                    wire:blur="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', $event.target.value, document.getElementById('extra-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, document.getElementById('night-work-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').checked)"
+                                                    wire:change.debounce.300ms="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', $event.target.value, document.getElementById('extra-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, document.getElementById('night-work-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').checked)"
                                                     class="w-full h-6 text-xs text-center border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-md px-1 py-1 transition-all {{ $timesheet && $timesheet->hours > 0 ? 'bg-green-50 border-green-300 text-green-700' : '' }} {{ $isWeekend ? 'bg-red-50 border-red-300' : '' }} {{ $isToday ? 'bg-blue-50 border-blue-300' : '' }} hover:shadow-sm"
                                                     placeholder="0"
                                                     title="Horas regulares - {{ $currentDate->format('d/m/Y') }} - {{ $employee->name }}"
@@ -318,7 +318,7 @@
                                                     max="24" 
                                                     value="{{ $timesheet ? $timesheet->extra_hours : '' }}"
                                                     id="extra-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}"
-                                                    wire:blur="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', document.getElementById('regular-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, $event.target.value, document.getElementById('night-work-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').checked)"
+                                                    wire:change.debounce.300ms="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', document.getElementById('regular-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, $event.target.value, document.getElementById('night-work-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').checked)"
                                                     class="w-full h-6 text-xs text-center border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-md px-1 py-1 transition-all {{ $timesheet && $timesheet->extra_hours > 0 ? 'bg-orange-50 border-orange-300 text-orange-700' : '' }} {{ $isWeekend ? 'bg-red-50 border-red-300' : '' }} {{ $isToday ? 'bg-blue-50 border-blue-300' : '' }} hover:shadow-sm"
                                                     placeholder="0"
                                                     title="Horas extra - {{ $currentDate->format('d/m/Y') }} - {{ $employee->name }}"
@@ -334,7 +334,7 @@
                                                         type="checkbox" 
                                                         id="night-work-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}"
                                                         {{ $timesheet && $timesheet->night_work ? 'checked' : '' }}
-                                                        wire:blur="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', document.getElementById('regular-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, document.getElementById('extra-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, $event.target.checked)"
+                                                        wire:change="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', document.getElementById('regular-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, document.getElementById('extra-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, $event.target.checked)"
                                                         class="w-4 h-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded transition-all hover:scale-110"
                                                         title="Trabajo nocturno - {{ $currentDate->format('d/m/Y') }} - {{ $employee->name }}"
                                                     />
@@ -965,6 +965,61 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedStartDate = new Date(startDateValue);
         selectedEndDate = new Date(endDateValue);
         updateDisplay();
+    }
+});
+
+// Use event delegation on document level to catch all tab events
+document.addEventListener('keydown', function(e) {
+    // Only handle tab events on timesheet inputs
+    if (e.key === 'Tab' && e.target && (e.target.type === 'number' || e.target.type === 'checkbox')) {
+        const target = e.target;
+        const id = target.id;
+        
+        // Check if this is a timesheet input
+        if (id.includes('regular-hours') || id.includes('extra-hours') || id.includes('night-work')) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Determine the input type based on ID
+            let inputType = '';
+            if (id.includes('regular-hours')) {
+                inputType = 'regular-hours';
+            } else if (id.includes('extra-hours')) {
+                inputType = 'extra-hours';
+            } else if (id.includes('night-work')) {
+                inputType = 'night-work';
+            }
+            
+            if (inputType) {
+                // Get all inputs of the same type from the document
+                const allSameTypeInputs = Array.from(document.querySelectorAll('input[type="number"], input[type="checkbox"]')).filter(inp => 
+                    (inputType === 'regular-hours' && inp.id.includes('regular-hours')) ||
+                    (inputType === 'extra-hours' && inp.id.includes('extra-hours')) ||
+                    (inputType === 'night-work' && inp.id.includes('night-work'))
+                );
+                
+                // Find current input index
+                const currentIndex = allSameTypeInputs.indexOf(target);
+                
+                if (e.shiftKey) {
+                    // Shift+Tab: Move to previous
+                    const prevIndex = currentIndex > 0 ? currentIndex - 1 : allSameTypeInputs.length - 1;
+                    const prevInput = allSameTypeInputs[prevIndex];
+                    prevInput.focus();
+                    if (prevInput.type !== 'checkbox') {
+                        prevInput.select();
+                    }
+                } else {
+                    // Tab: Move to next
+                    const nextIndex = currentIndex < allSameTypeInputs.length - 1 ? currentIndex + 1 : 0;
+                    const nextInput = allSameTypeInputs[nextIndex];
+                    nextInput.focus();
+                    if (nextInput.type !== 'checkbox') {
+                        nextInput.select();
+                    }
+                }
+            }
+        }
     }
 });
 </script>

@@ -70,10 +70,6 @@ class EmployeeUtilizationStats extends BaseWidget
         $thisMonth = now()->startOfMonth();
         $totalHoursThisMonth = Timesheet::whereBetween('date', [$thisMonth, $thisMonth->copy()->endOfMonth()])
             ->sum(DB::raw('hours + extra_hours'));
-        
-        // Calculate employee utilization rate (assuming 160 hours per month per employee)
-        $totalPossibleHours = $activeEmployees * 160;
-        $utilizationRate = $totalPossibleHours > 0 ? ($totalHoursThisMonth / $totalPossibleHours) * 100 : 0;
 
         return [
             Stat::make('Empleados Activos', $activeEmployees)
@@ -85,11 +81,6 @@ class EmployeeUtilizationStats extends BaseWidget
                 ->description('Este mes')
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('primary'),
-
-            Stat::make('Utilización', number_format($utilizationRate, 1) . '%')
-                ->description('Capacidad utilizada')
-                ->descriptionIcon($utilizationRate >= 80 ? 'heroicon-o-chart-bar' : 'heroicon-o-chart-bar-square')
-                ->color($utilizationRate >= 80 ? 'success' : ($utilizationRate >= 60 ? 'warning' : 'danger')),
         ];
     }
 }

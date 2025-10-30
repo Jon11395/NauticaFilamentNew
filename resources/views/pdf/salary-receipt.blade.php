@@ -239,7 +239,7 @@
                         <td class="amount">CRC {{ $guard_amount }}</td>
                     </tr>
                     @endif
-                    @if($employee_type === 'hourly')
+                    @if(($holiday_amount ?? 0) > 0)
                     <tr>
                         <td>Feriados / Adicionales</td>
                         <td class="amount">CRC {{ $holiday_amount }}</td>
@@ -252,7 +252,6 @@
                 </tbody>
             </table>
             
-            @if($employee_type === 'hourly')
             <table class="main-table">
                 <thead>
                     <tr class="section-header">
@@ -260,21 +259,29 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @if($employee_type === 'hourly' && isset($ccss_rate))
                     <tr>
-                        <td>CCSS (10.67%)</td>
+                        <td>CCSS ({{ $ccss_rate }})</td>
                         <td class="amount">CRC {{ $ccss_amount }}</td>
                     </tr>
+                    @elseif($ccss_amount > 0)
+                    <tr>
+                        <td>CCSS</td>
+                        <td class="amount">CRC {{ $ccss_amount }}</td>
+                    </tr>
+                    @endif
+                    @if(($rebates_amount ?? 0) > 0)
                     <tr>
                         <td>Rebajos / Préstamos</td>
                         <td class="amount">CRC {{ $rebates_amount }}</td>
                     </tr>
+                    @endif
                     <tr style="background-color: #e8f4f8; font-weight: bold; border-top: 2px solid #3498db;">
                         <td>TOTAL DEDUCCIONES</td>
                         <td class="amount">CRC {{ $total_deductions }}</td>
                     </tr>
                 </tbody>
             </table>
-            @endif
             
             <table class="main-table">
                 <tbody>

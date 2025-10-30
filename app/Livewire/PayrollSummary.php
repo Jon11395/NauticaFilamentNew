@@ -11,14 +11,16 @@ class PayrollSummary extends Component
     public $dateFrom;
     public $dateTo;
     public $projectId;
+    public $payrollType = 'hourly';
     public $employees = [];
     public $totals = [];
 
-    public function mount($dateFrom = null, $dateTo = null, $projectId = null, $employees = [], $totals = [])
+    public function mount($dateFrom = null, $dateTo = null, $projectId = null, $payrollType = 'hourly', $employees = [], $totals = [])
     {
         $this->dateFrom = $dateFrom;
         $this->dateTo = $dateTo;
         $this->projectId = $projectId;
+        $this->payrollType = $payrollType;
         $this->employees = collect($employees);
         $this->totals = $totals;
     }

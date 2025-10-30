@@ -49,7 +49,17 @@
 
                         <!-- Employee Details -->
                         <div class="p-6">
-                            @if(isset($employee['hours']) && $employee['hours'] > 0)
+                            @php
+                                // Determine if this is hourly payroll
+                                // If payrollType is set, use it; otherwise check if employee has hours data
+                                if (isset($payrollType)) {
+                                    $isHourlyPayroll = $payrollType === 'hourly';
+                                } else {
+                                    // Fallback: check if employee has hours data
+                                    $isHourlyPayroll = isset($employee['hours']) && $employee['hours'] > 0;
+                                }
+                            @endphp
+                            @if($isHourlyPayroll)
                                 <!-- Hourly Payroll View -->
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <!-- Hours & Rates Section -->
@@ -117,23 +127,15 @@
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <!-- Hours & Rates Section -->
                                     <div class="space-y-4">
-                                        <h5 class="text-sm font-medium text-gray-700 uppercase tracking-wide border-b border-gray-200 pb-2">Horas y Tarifas</h5>
+                                        <h5 class="text-sm font-medium text-gray-700 uppercase tracking-wide border-b border-gray-200 pb-2">Información</h5>
                                         <div class="space-y-3">
                                             <div class="flex justify-between items-center">
-                                                <span class="text-sm text-gray-600">Horas regulares:</span>
-                                                <span class="font-medium text-gray-400">N/A</span>
+                                                <span class="text-sm text-gray-600">Tipo:</span>
+                                                <span class="font-medium text-gray-400">Salario Fijo</span>
                                             </div>
                                             <div class="flex justify-between items-center">
-                                                <span class="text-sm text-gray-600">Horas extra:</span>
-                                                <span class="font-medium text-gray-400">N/A</span>
-                                            </div>
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-sm text-gray-600">Noches trabajadas:</span>
-                                                <span class="font-medium text-gray-400">N/A</span>
-                                            </div>
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-sm text-gray-600">Tarifa por hora:</span>
-                                                <span class="font-medium text-gray-400">N/A</span>
+                                                <span class="text-sm text-gray-600">Empleado:</span>
+                                                <span class="font-medium text-gray-400">{{ $employee['name'] }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -144,19 +146,19 @@
                                         <div class="space-y-3">
                                             <div class="flex justify-between items-center">
                                                 <span class="text-sm text-gray-600">Salario base:</span>
-                                                <span class="font-medium text-gray-900">₡{{ number_format($employee['salario_base'], 2) }}</span>
+                                                <span class="font-medium text-gray-900">₡{{ number_format($employee['salario_base'] ?? 0, 2) }}</span>
                                             </div>
                                             <div class="flex justify-between items-center">
                                                 <span class="text-sm text-gray-600">Adicionales:</span>
-                                                <span class="font-medium text-gray-400">N/A</span>
+                                                <span class="font-medium {{ ($employee['adicionales'] ?? 0) > 0 ? 'text-blue-600' : 'text-gray-400' }}">+₡{{ number_format($employee['adicionales'] ?? 0, 2) }}</span>
                                             </div>
                                             <div class="flex justify-between items-center">
                                                 <span class="text-sm text-gray-600">Rebajas:</span>
-                                                <span class="font-medium text-gray-400">N/A</span>
+                                                <span class="font-medium {{ ($employee['rebajos'] ?? 0) > 0 ? 'text-red-600' : 'text-gray-400' }}">-₡{{ number_format($employee['rebajos'] ?? 0, 2) }}</span>
                                             </div>
                                             <div class="flex justify-between items-center">
                                                 <span class="text-sm text-gray-600">CCSS:</span>
-                                                <span class="font-medium text-gray-400">N/A</span>
+                                                <span class="font-medium {{ ($employee['ccss'] ?? 0) > 0 ? 'text-orange-600' : 'text-gray-400' }}">-₡{{ number_format($employee['ccss'] ?? 0, 2) }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -167,10 +169,10 @@
                                         <div class="bg-green-50 border border-green-200 rounded-lg p-4">
                                             <div class="flex justify-between items-center">
                                                 <span class="text-sm font-medium text-green-800">Monto a pagar:</span>
-                                                <span class="text-xl font-bold text-green-700">₡{{ number_format($employee['salario_total'], 2) }}</span>
+                                                <span class="text-xl font-bold text-green-700">₡{{ number_format($employee['salario_total'] ?? 0, 2) }}</span>
                                             </div>
                                             <div class="text-xs text-green-600 mt-1">
-                                                Salario fijo establecido
+                                                Salario + Adicionales - Rebajas - CCSS
                                             </div>
                                         </div>
                                     </div>
