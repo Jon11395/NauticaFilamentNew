@@ -104,4 +104,10 @@ git push origin main
 **Nota:** Al hacer push a main, GitHub Actions despliega automáticamente a producción (domcloud.co)
 
 
+--------------------------------------------------------------------------
+SI DA ERROR 419 - CORRER EN EL SERVIDOR
+--------------------------------------------------------------------------
+
+php artisan vendor:publish --tag=livewire:assets --force
+
 
