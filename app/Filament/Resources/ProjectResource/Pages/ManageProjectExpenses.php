@@ -18,6 +18,8 @@ use Filament\Resources\Components\Tab;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Forms\Components\DatePicker;
 use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
@@ -34,6 +36,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\Column;
 use Illuminate\Support\Facades\Storage;
 use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
+use Illuminate\Support\Str;
 
 
 class ManageProjectExpenses extends ManageRelatedRecords
@@ -89,106 +92,135 @@ class ManageProjectExpenses extends ManageRelatedRecords
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('voucher')
-                    ->label('Comprobante')
-                    ->required()
-                    ->numeric()
-                    ->maxLength(255),
-                Forms\Components\DatePicker::make('date')
-                    ->label('Fecha')
-                    ->required()
-                    ->default(now()),
-                Forms\Components\TextInput::make('concept')
-                    ->label('Concepto')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('amount')
-                    ->label('Monto')
-                    ->prefix('₡')
-                    ->required()
-                    ->numeric()
-                    ->currencyMask(thousandSeparator: '.',decimalSeparator: ',',precision: 2),
-                Forms\Components\Select::make('type')
-                    ->options([
-                        'paid' => 'Pago',
-                        'unpaid' => 'Por Pagar',
+                Forms\Components\Section::make('Detalles del gasto')
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('voucher')
+                                    ->label('Comprobante')
+                                    ->required()
+                                    ->maxLength(50),
+                                Forms\Components\DateTimePicker::make('date')
+                                    ->label('Fecha')
+                                    ->required(),
+                            ]),
+                        Forms\Components\RichEditor::make('concept')
+                            ->label('Concepto')
+                            ->toolbarButtons([
+                                'bold',
+                                'italic',
+                                'underline',
+                                'strike',
+                                'bulletList',
+                                'orderedList',
+                                'link',
+                                'undo',
+                                'redo',
+                            ])
+                            ->maxLength(5000)
+                            ->extraAttributes([
+                                'style' => 'max-height: 240px; overflow: auto;',
+                            ])
+                            ->columnSpanFull(),
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('amount')
+                                    ->label('Monto')
+                                    ->prefix('₡')
+                                    ->required()
+                                    ->numeric()
+                                    ->currencyMask(thousandSeparator: '.', decimalSeparator: ',', precision: 2),
+                                Forms\Components\Select::make('type')
+                                    ->label('Tipo')
+                                    ->required()
+                                    ->options([
+                                        'paid' => 'Pagado',
+                                        'unpaid' => 'No pagado',
+                                    ]),
+                                Forms\Components\Select::make('expense_type_id')
+                                    ->label('Tipo de gasto')
+                                    ->relationship(name: 'expenseType', titleAttribute: 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->required()
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Nombre')
+                                            ->required()
+                                            ->maxLength(255),
+                                    ]),
+                            ]),
                     ])
-                    ->required(),
-                Forms\Components\Select::make('provider_id')
-                    ->label('Proveedor')
-                    ->relationship(name:'provider', titleAttribute:'name')
-                    ->searchable()
-                    ->preload()
-                    ->live()
-                    ->required()
-                    ->createOptionForm([
-                        Forms\Components\TextInput::make('name')
-                            ->required()
-                            ->maxLength(255),
-                        PhoneInput::make('phone')
-                            ->initialCountry('cr'),
-                        Forms\Components\TextInput::make('email')
-                            ->required()
-                            ->email()
-                            ->maxLength(255),
-                        Forms\Components\Select::make('country_id')
-                            ->label('País')
-                            ->relationship(name:'country', titleAttribute:'name')
+                    ->columns(1),
+                Forms\Components\Section::make('Proveedor')
+                    ->schema([
+                        Forms\Components\Select::make('provider_id')
+                            ->label('Proveedor')
+                            ->relationship(name: 'provider', titleAttribute: 'name')
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->afterStateUpdated(function (Set $set) {
-                                $set('state_id', null);
-                                $set('city_id', null);
-                            }) 
-                            ->required(),
-                        Forms\Components\Select::make('state_id')
-                            ->options(fn (Get $get): Collection => State::query()
-                                ->where('country_id', $get('country_id'))
-                                ->pluck('name', 'id')
-                            )
-                            ->label('Estado o Provincia')
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->afterStateUpdated(function (Set $set) {
-                                $set('city_id', null);
-                            }) 
-                            ->required(),
-                        Forms\Components\Select::make('city_id')
-                            ->options(fn (Get $get): Collection => City::query()
-                                ->where('state_id', $get('state_id'))
-                                ->pluck('name', 'id')
-                            )
-                            ->label('Ciudad')
-                            ->searchable()
-                            ->preload()
-                            ->required(),
-                    ]),
-                Forms\Components\Select::make('expense_type_id')
-                    ->label('Tipo de gasto')
-                    ->relationship(name:'expenseType', titleAttribute:'name')
-                    ->searchable()
-                    ->preload()
-                    ->live()
-                    ->required()
-                    ->createOptionForm([
-                        Forms\Components\TextInput::make('name')
-                        ->label('Nombre')
-                        ->required()
-                        ->maxLength(255),
-                    ]),
-                Forms\Components\FileUpload::make('attachment')
-                    ->disk('public') // use the public disk, which points to storage/app/public
-                    ->directory('expenses/attachments')
-                    ->acceptedFileTypes(['application/pdf', 'image/*']) 
-                    ->label('Archivo adjunto (PDF o imagen)')
-                    ->maxSize(10240)
-                    ->nullable()
-                    //->multiple()
-                    //->panelLayout('grid'),
-                
-
+                            ->required()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                PhoneInput::make('phone')
+                                    ->initialCountry('cr'),
+                                Forms\Components\TextInput::make('email')
+                                    ->required()
+                                    ->email()
+                                    ->maxLength(255),
+                                Forms\Components\Select::make('country_id')
+                                    ->label('País')
+                                    ->relationship(name: 'country', titleAttribute: 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set) {
+                                        $set('state_id', null);
+                                        $set('city_id', null);
+                                    })
+                                    ->required(),
+                                Forms\Components\Select::make('state_id')
+                                    ->options(fn (Get $get): Collection => State::query()
+                                        ->where('country_id', $get('country_id'))
+                                        ->pluck('name', 'id')
+                                    )
+                                    ->label('Estado o Provincia')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set) {
+                                        $set('city_id', null);
+                                    })
+                                    ->required(),
+                                Forms\Components\Select::make('city_id')
+                                    ->options(fn (Get $get): Collection => City::query()
+                                        ->where('state_id', $get('state_id'))
+                                        ->pluck('name', 'id')
+                                    )
+                                    ->label('Ciudad')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required(),
+                            ]),
+                    ])
+                    ->columns(1),
+                Forms\Components\Section::make('Adjunto')
+                    ->schema([
+                        FileUpload::make('attachment')
+                            ->disk('public')
+                            ->directory('expenses/attachments')
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                            ->label('Archivo adjunto (PDF o imagen)')
+                            ->maxSize(10240)
+                            ->openable()
+                            ->downloadable()
+                            ->nullable(),
+                    ])
+                    ->columns(1),
             ]);
     }
 
@@ -198,45 +230,69 @@ class ManageProjectExpenses extends ManageRelatedRecords
             ->heading('Gastos')
             ->description('Lista de gastos')
             ->columns([
-                Tables\Columns\TextColumn::make('voucher')
-                    ->label('Comprobante')
-                    ->searchable()
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('date')
-                    ->label('Fecha')
-                    ->date()
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('concept')
-                    ->label('Concepto')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('amount')
-                    ->label('Monto')
-                    ->money('CRC')
-                    ->summarize(Sum::make()->label('Total')->money('CRC'))
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('type')
-                    ->label('Tipo')
-                    ->badge()
-                    ->searchable()
-                    ->color(fn (string $state): string => match ($state) {
-                        'paid' => 'success',
-                        'unpaid' => 'warning',
-                    })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'paid' => 'Paga',
-                        'unpaid' => 'Por pagar',
-                    }),
-                Tables\Columns\TextColumn::make('provider.name')
-                    ->label('Proveedor')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('expenseType.name')
-                    ->label('Tipo')
-                    ->sortable()
-                    ->searchable(),
+                Split::make([
+                    Stack::make([
+                        Tables\Columns\TextColumn::make('voucher')
+                            ->label('Comprobante')
+                            ->sortable()
+                            ->toggleable()
+                            ->searchable(),
+                        Tables\Columns\TextColumn::make('date')
+                            ->label('Fecha')
+                            ->dateTime('d/m/Y h:i A')
+                            ->color('gray')
+                            ->sortable()
+                            ->searchable()
+                            ->extraAttributes(['class' => 'text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400'])
+                            ->toggleable(),
+                        Tables\Columns\TextColumn::make('provider.name')
+                            ->label('Proveedor')
+                            ->weight('bold')
+                            ->toggleable()
+                            ->wrap()
+                            ->searchable(),
+                        Tables\Columns\TextColumn::make('concept')
+                            ->label('Concepto')
+                            ->formatStateUsing(fn ($state) => strip_tags((string) $state))
+                            ->limit(80)
+                            ->tooltip(fn (Expense $record) => $this->formatConceptTooltip($record->concept))
+                            ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-300'])
+                            ->searchable(),
+                    ])->space(1)->grow(true),
+                    Stack::make([
+                        Tables\Columns\TextColumn::make('amount')
+                            ->label('Monto')
+                            ->money('CRC', locale: 'es_CR')
+                            ->weight('bold')
+                            ->alignEnd()
+                            ->sortable()
+                            ->searchable()
+                            ->summarize(Sum::make()->label('Total')->money('CRC', locale: 'es_CR')),
+                        Tables\Columns\TextColumn::make('type')
+                            ->label('Tipo')
+                            ->badge()
+                            ->alignEnd()
+                            ->color(fn (string $state): string => match ($state) {
+                                'paid' => 'success',
+                                'unpaid' => 'warning',
+                                default => 'secondary',
+                            })
+                            ->formatStateUsing(fn (string $state): string => match ($state) {
+                                'paid' => 'Pagado',
+                                'unpaid' => 'No pagado',
+                                default => ucfirst($state),
+                            })
+                            ->searchable(),
+                        Tables\Columns\TextColumn::make('expenseType.name')
+                            ->label('Categoría')
+                            ->badge()
+                            ->alignEnd()
+                            ->color('primary')
+                            ->toggleable()
+                            ->searchable()
+                            ->sortable(),
+                    ])->space(1)->extraAttributes(['class' => 'items-end text-right'])->grow(false),
+                ])->from('md'),
             ])
             ->filters([
                 SelectFilter::make('expenseType')
@@ -269,15 +325,11 @@ class ManageProjectExpenses extends ManageRelatedRecords
             ->actions([
                 Action::make('view_attachment')
                     ->label('Ver adjunto')
-                    ->url(fn ($record) => asset('storage/' . $record->attachment))
+                    ->url(fn (Expense $record) => $this->buildPrimaryAttachmentUrl($record))
                     ->openUrlInNewTab()
                     ->color('warning')
                     ->icon('heroicon-o-eye')
-                    ->visible(function ($record) {
-                        $record = $record->fresh();
-                        $path = is_array($record->attachment) ? ($record->attachment[0] ?? null) : $record->attachment;
-                        return $path && Storage::disk('public')->exists($path);
-                    }),
+                    ->visible(fn (Expense $record) => $this->primaryAttachmentExists($record)),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
                 //Tables\Actions\DissociateAction::make(),
@@ -298,4 +350,64 @@ class ManageProjectExpenses extends ManageRelatedRecords
 
 
     
+    protected function formatConceptTooltip(?string $html): ?string
+    {
+        if (empty($html)) {
+            return null;
+        }
+
+        $items = [];
+
+        if (preg_match_all('/<li[^>]*>(.*?)<\/li>/is', $html, $matches)) {
+            foreach ($matches[1] as $item) {
+                $clean = trim(strip_tags($item));
+
+                if ($clean !== '') {
+                    $items[] = '• ' . $clean;
+                }
+            }
+        }
+
+        if (empty($items)) {
+            $text = Str::of($html)
+                ->replace('<br />', "\r\n")
+                ->replace('<br/>', "\r\n")
+                ->replace('<br>', "\r\n")
+                ->toString();
+
+            $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $text = trim($text);
+
+            return $text !== '' ? $text : null;
+        }
+
+        return implode("\r\n", $items);
+    }
+
+    protected function buildPrimaryAttachmentUrl(Expense $record): ?string
+    {
+        $path = $this->getPrimaryAttachmentPath($record->attachment);
+
+        return $path ? asset('storage/' . ltrim($path, '/')) : null;
+    }
+
+    protected function primaryAttachmentExists(Expense $record): bool
+    {
+        $path = $this->getPrimaryAttachmentPath($record->attachment);
+
+        return $path ? Storage::disk('public')->exists($path) : false;
+    }
+
+    protected function getPrimaryAttachmentPath($attachment): ?string
+    {
+        if (empty($attachment)) {
+            return null;
+        }
+
+        $paths = is_array($attachment) ? $attachment : [$attachment];
+
+        return collect($paths)
+            ->filter()
+            ->first();
+    }
 }

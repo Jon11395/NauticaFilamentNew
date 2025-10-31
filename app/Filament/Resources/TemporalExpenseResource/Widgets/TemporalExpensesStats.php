@@ -8,6 +8,8 @@ use Filament\Widgets\StatsOverviewWidget\Card;
 
 class TemporalExpensesStats extends BaseWidget
 {
+    protected $listeners = ['temporal-expenses-updated' => '$refresh'];
+
     protected static ?string $pollingInterval = '30s';
 
     protected function getCards(): array

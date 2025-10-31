@@ -17,6 +17,7 @@ class Provider extends Model
         'name',
         'phone',
         'email',
+        'identification',
         'country_id',
         'state_id',
         'city_id',
