@@ -49,6 +49,10 @@ class ExpenseResource extends Resource
                 Forms\Components\TextInput::make('expensetypes_id')
                     ->required()
                     ->numeric(),
+                Forms\Components\Toggle::make('temporal')
+                    ->label('Temporal')
+                    ->inline(false)
+                    ->default(false),
             ]);
     }
 
@@ -77,6 +81,9 @@ class ExpenseResource extends Resource
                 Tables\Columns\TextColumn::make('expensetypes_id')
                     ->numeric()
                     ->sortable(),
+                Tables\Columns\IconColumn::make('temporal')
+                    ->label('Temporal')
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

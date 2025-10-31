@@ -167,7 +167,7 @@ class ManageProjectExpenses extends ManageRelatedRecords
                     ]),
                 Forms\Components\Select::make('expense_type_id')
                     ->label('Tipo de gasto')
-                    ->relationship(name:'ExpenseType', titleAttribute:'name')
+                    ->relationship(name:'expenseType', titleAttribute:'name')
                     ->searchable()
                     ->preload()
                     ->live()
@@ -233,15 +233,15 @@ class ManageProjectExpenses extends ManageRelatedRecords
                     ->label('Proveedor')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('ExpenseType.name')
+                Tables\Columns\TextColumn::make('expenseType.name')
                     ->label('Tipo')
                     ->sortable()
                     ->searchable(),
             ])
             ->filters([
-                SelectFilter::make('ExpenseType')
+                SelectFilter::make('expenseType')
                     ->label('Tipo')
-                    ->relationship('ExpenseType', 'name')
+                    ->relationship('expenseType', 'name')
                     ->searchable()
                     ->preload(),
                 Filter::make('created_at')
