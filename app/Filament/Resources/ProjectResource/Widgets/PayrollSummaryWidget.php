@@ -14,7 +14,7 @@ class PayrollSummaryWidget extends BaseWidget
 
     protected static ?string $pollingInterval = '5s';
 
-    protected int | string | array $columnSpan = 6;
+    protected int | string | array $columnSpan = ['default' => 12, 'md' => 6];
 
     public function getColumns(): int 
     {

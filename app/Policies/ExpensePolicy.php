@@ -15,7 +15,7 @@ class ExpensePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_expense');
+        return $user->can('view_any_temporal::expense');
     }
 
     /**
@@ -23,7 +23,7 @@ class ExpensePolicy
      */
     public function view(User $user, Expense $expense): bool
     {
-        return $user->can('view_expense');
+        return $user->can('view_temporal::expense');
     }
 
     /**
@@ -31,7 +31,7 @@ class ExpensePolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_expense');
+        return $user->can('create_temporal::expense');
     }
 
     /**
@@ -39,7 +39,7 @@ class ExpensePolicy
      */
     public function update(User $user, Expense $expense): bool
     {
-        return $user->can('update_expense');
+        return $user->can('update_temporal::expense');
     }
 
     /**
@@ -47,7 +47,7 @@ class ExpensePolicy
      */
     public function delete(User $user, Expense $expense): bool
     {
-        return $user->can('delete_expense');
+        return $user->can('delete_temporal::expense');
     }
 
     /**
@@ -55,7 +55,7 @@ class ExpensePolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_expense');
+        return $user->can('delete_any_temporal::expense');
     }
 
     /**
@@ -63,7 +63,7 @@ class ExpensePolicy
      */
     public function forceDelete(User $user, Expense $expense): bool
     {
-        return $user->can('force_delete_expense');
+        return $user->can('force_delete_temporal::expense');
     }
 
     /**
@@ -71,7 +71,7 @@ class ExpensePolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_expense');
+        return $user->can('force_delete_any_temporal::expense');
     }
 
     /**
@@ -79,7 +79,7 @@ class ExpensePolicy
      */
     public function restore(User $user, Expense $expense): bool
     {
-        return $user->can('restore_expense');
+        return $user->can('restore_temporal::expense');
     }
 
     /**
@@ -87,7 +87,7 @@ class ExpensePolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_expense');
+        return $user->can('restore_any_temporal::expense');
     }
 
     /**
@@ -95,7 +95,7 @@ class ExpensePolicy
      */
     public function replicate(User $user, Expense $expense): bool
     {
-        return $user->can('replicate_expense');
+        return $user->can('replicate_temporal::expense');
     }
 
     /**
@@ -103,6 +103,6 @@ class ExpensePolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_expense');
+        return $user->can('reorder_temporal::expense');
     }
 }

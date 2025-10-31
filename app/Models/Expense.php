@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
@@ -21,8 +23,14 @@ class Expense extends Model
         'amount',
         'type',
         'provider_id',
+        'project_id',
         'expense_type_id',
         'attachment',
+        'temporal',
+    ];
+
+    protected $casts = [
+        'temporal' => 'boolean',
     ];
 
     public function project(){
@@ -32,12 +40,34 @@ class Expense extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function ExpenseType(){
+    public function expenseType()
+    {
         return $this->belongsTo(ExpenseType::class);
     }
 
     protected static function booted()
     {
+        static::created(function (Expense $expense) {
+            if (! $expense->temporal || ! is_null($expense->project_id)) {
+                return;
+            }
+
+            $recipients = User::permission('view_any_temporal::expense')->get();
+
+            if ($recipients->isEmpty()) {
+                return;
+            }
+
+            $amount = number_format((float) $expense->amount, 2, ',', '.');
+            $concept = $expense->concept ?: 'Sin concepto';
+
+            Notification::make()
+                ->title('Nuevo gasto temporal')
+                ->body("{$concept} • ₡{$amount}")
+                ->icon('heroicon-o-inbox-stack')
+                ->warning()
+                ->sendToDatabase($recipients);
+        });
 
         static::updating(function ($expense) {
             // Check if attachment is being changed or removed
@@ -101,7 +131,7 @@ class Expense extends Model
     
     public function getProveedorAttribute(): string { return $this->Provider->name;}
 
-    public function getTipoGastoAttribute(): string { return $this->ExpenseType->name;}
+    public function getTipoGastoAttribute(): string { return $this->expenseType?->name ?? '';}
 
     public function getAdjuntoAttribute(): string { return $this->attachment ? 'Adjunto' : 'Adjunto eliminado';}
 }
