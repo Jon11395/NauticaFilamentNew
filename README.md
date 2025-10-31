@@ -44,7 +44,6 @@ Para activar un cron schedule
 
 
 1. ssh the server
-   ```
 
 2. Get the public path to enter later with this commands:
 
@@ -80,16 +79,31 @@ Once the file opens in `vim`, press `G` to jump to the bottom, then type `o` (lo
    crontab -l
    ```
 
+   
+
 7. Optional: tail the log to confirm it runs each minute:
 
    ```bash
    tail -f /home/gruponauticadev/cron.log
    ```
-  - to exit tail Ctrl + C
+  - to exit tail `Ctrl + C`
 
    You’ll see entries like “No scheduled commands are ready to run” until automation jobs are configured.
 
-With this cron in place, Laravel’s scheduler executes every minute and respects the `gmail_sync_interval_minutes` setting configured in Filament.
+7. Optional, if says "No scheduled tasks have been defined." when running:
+
+   ```bash
+      php artisan schedule:list
+      ```
+
+   -  Check the values from the global config
+   ```bash
+   php artisan tinker
+   >>> \App\Models\GlobalConfig::getValue('gmail_sync_interval_minutes');
+   >>> \App\Models\GlobalConfig::getValue('gmail_client_id');
+   ```
+
+ With this cron in place, Laravel’s scheduler executes every minute and respects the `gmail_sync_interval_minutes` setting configured in Filament.
 
 
 
