@@ -10,6 +10,7 @@ class GmailService
 {
     protected ?Google_Client $client = null;
     protected ?Google_Service_Gmail $service = null;
+    protected ?array $config = null;
 
     /**
      * Initialize Gmail client with credentials from settings
@@ -75,18 +76,24 @@ class GmailService
      */
     protected function getGmailConfig(): ?array
     {
+        if ($this->config !== null) {
+            return $this->config;
+        }
+
         $config = [];
-        
+
         $config['gmail_client_id'] = \App\Models\GlobalConfig::getValue('gmail_client_id');
         $config['gmail_client_secret'] = \App\Models\GlobalConfig::getValue('gmail_client_secret');
         $config['gmail_refresh_token'] = \App\Models\GlobalConfig::getValue('gmail_refresh_token');
         $config['gmail_user_email'] = \App\Models\GlobalConfig::getValue('gmail_user_email');
-        
+
         if (empty($config['gmail_client_id']) && empty($config['gmail_client_secret'])) {
             return null;
         }
-        
-        return $config;
+
+        $this->config = $config;
+
+        return $this->config;
     }
 
 
@@ -113,7 +120,7 @@ class GmailService
             }
         }
         
-        $userEmail = $this->getGmailConfig()['gmail_user_email'] ?? 'me';
+        $userEmail = $this->getUserEmail();
         
         // Search for unread emails
         $query = 'is:unread';
@@ -127,8 +134,8 @@ class GmailService
             $messages = [];
             if ($results && $results->getMessages()) {
                 foreach ($results->getMessages() as $message) {
-                    $msg = $this->service->users_messages->get($userEmail, $message->getId());
-                    $messages[] = $this->formatMessage($msg);
+                    $msg = $this->service->users_messages->get($userEmail, $message->getId(), ['format' => 'full']);
+                    $messages[] = $this->formatMessage($msg, $userEmail);
                 }
             }
 
@@ -153,7 +160,7 @@ class GmailService
     /**
      * Format Gmail message for easier use
      */
-    protected function formatMessage($message): array
+    protected function formatMessage($message, ?string $userEmail = null): array
     {
         $payload = $message->getPayload();
         $headers = $payload->getHeaders();
@@ -180,6 +187,11 @@ class GmailService
         // Extract body
         $body = $this->extractBody($payload);
 
+        $attachments = [];
+        if ($userEmail) {
+            $attachments = $this->extractAttachments($payload, $message->getId(), $userEmail);
+        }
+
         return [
             'id' => $message->getId(),
             'thread_id' => $message->getThreadId(),
@@ -188,6 +200,7 @@ class GmailService
             'subject' => $subject,
             'date' => $date,
             'body' => $body,
+            'attachments' => $attachments,
         ];
     }
 
@@ -201,15 +214,32 @@ class GmailService
 
         if ($parts) {
             foreach ($parts as $part) {
-                $data = $part->getBody()->getData();
-                if ($data) {
-                    $body .= base64_decode(strtr($data, '-_', '+/'));
+                $mimeType = $part->getMimeType();
+
+                // Prefer plain text parts when available
+                if (str_contains($mimeType ?? '', 'text/plain')) {
+                    $decoded = $this->decodePartData($part->getBody()->getData());
+                    if ($decoded !== '') {
+                        return $decoded;
+                    }
+                }
+
+                if ($part->getParts()) {
+                    $nested = $this->extractBody($part);
+                    if ($nested !== '') {
+                        return $nested;
+                    }
+                }
+
+                $decoded = $this->decodePartData($part->getBody()->getData());
+                if ($decoded !== '') {
+                    $body .= $decoded;
                 }
             }
         } else {
             $data = $payload->getBody()->getData();
             if ($data) {
-                $body = base64_decode(strtr($data, '-_', '+/'));
+                $body = $this->decodePartData($data);
             }
         }
 
@@ -259,6 +289,69 @@ class GmailService
             
             return false;
         }
+    }
+
+    protected function getUserEmail(): string
+    {
+        $config = $this->getGmailConfig();
+
+        return $config['gmail_user_email'] ?? 'me';
+    }
+
+    protected function extractAttachments($payload, string $messageId, string $userEmail): array
+    {
+        $attachments = [];
+        $parts = $payload->getParts();
+
+        if (!$parts) {
+            return $attachments;
+        }
+
+        foreach ($parts as $part) {
+            if ($part->getFilename()) {
+                $body = $part->getBody();
+                $data = '';
+
+                if ($body->getAttachmentId()) {
+                    $attachment = $this->service->users_messages_attachments->get(
+                        $userEmail,
+                        $messageId,
+                        $body->getAttachmentId()
+                    );
+
+                    $data = $this->decodePartData($attachment->getData());
+                } else {
+                    $data = $this->decodePartData($body->getData());
+                }
+
+                $attachments[] = [
+                    'filename' => $part->getFilename(),
+                    'mime_type' => $part->getMimeType(),
+                    'size' => $part->getBody()->getSize(),
+                    'data' => $data,
+                ];
+            }
+
+            if ($part->getParts()) {
+                $attachments = array_merge(
+                    $attachments,
+                    $this->extractAttachments($part, $messageId, $userEmail)
+                );
+            }
+        }
+
+        return $attachments;
+    }
+
+    protected function decodePartData(?string $data): string
+    {
+        if (empty($data)) {
+            return '';
+        }
+
+        $data = strtr($data, '-_', '+/');
+
+        return base64_decode($data, true) ?: '';
     }
 }
 

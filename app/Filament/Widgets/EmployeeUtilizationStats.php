@@ -18,7 +18,7 @@ class EmployeeUtilizationStats extends BaseWidget
 
     protected ?string $heading = 'Utilización de Recursos Humanos';
     protected ?string $description = 'Métricas de empleados activos, horas trabajadas y tasa de utilización';
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
 
     protected function getStats(): array
     {

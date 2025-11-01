@@ -66,7 +66,8 @@ class Expense extends Model
                 ->body("{$concept} • ₡{$amount}")
                 ->icon('heroicon-o-inbox-stack')
                 ->warning()
-                ->sendToDatabase($recipients);
+                ->broadcast($recipients)
+                ->sendToDatabase($recipients, true);
         });
 
         static::updating(function ($expense) {

@@ -122,6 +122,24 @@ class GlobalConfig extends Page implements HasForms, HasActions
                                             ->dehydrated()
                                             ->columnSpan(1),
 
+                                        Select::make('gmail_sync_interval_minutes')
+                                            ->label('Sincronización automática')
+                                            ->options([
+                                                0 => 'Desactivado',
+                                                60 => 'Cada hora',
+                                                120 => 'Cada 2 horas',
+                                                180 => 'Cada 3 horas',
+                                                240 => 'Cada 4 horas',
+                                                360 => 'Cada 6 horas',
+                                                720 => 'Cada 12 horas',
+                                                1440 => 'Cada día',
+                                                2880 => 'Cada 2 días',
+                                                10080 => 'Cada semana',
+                                            ])
+                                            ->helperText('Frecuencia con la que se ejecutará automáticamente la sincronización de Gmail (mínimo cada hora)')
+                                            ->default(0)
+                                            ->columnSpan(1),
+
                                         ViewField::make('test_connection')
                                             ->view('filament.pages.gmail-test-button')
                                             ->columnSpan('full'),
@@ -196,6 +214,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
             'gmail_client_secret' => 'string',
             'gmail_refresh_token' => 'string',
             'gmail_user_email' => 'string',
+            'gmail_sync_interval_minutes' => 'integer',
         ];
 
         // Fields to exclude from saving (ViewField components like instructions and buttons)
@@ -231,6 +250,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
             'gmail_client_secret' => 'Client Secret de OAuth de Gmail',
             'gmail_refresh_token' => 'Refresh Token de Gmail para acceso API',
             'gmail_user_email' => 'Correo electrónico de cuenta de Gmail',
+            'gmail_sync_interval_minutes' => 'Frecuencia (en minutos) para ejecutar la sincronización automática de Gmail',
         ];
 
         return $descriptions[$key] ?? '';

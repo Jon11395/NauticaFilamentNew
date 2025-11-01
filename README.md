@@ -37,71 +37,75 @@ commands:
   - chmod 0750 -R storage || true
 
 
---------------------------------------------------------------------------
-Para despliegue de actualizaciones:
 
-* Vamos a domcloud.co a nuestro proyecto en la parte de Despliegue->Añadir una tarea de despliegue y le damos al boton de Configurar Webhook, tomamos el WEBHOOK_SECRET y el WEBHOOK_AUTH
-* Creamos los secrets en el github repo en settings->Secrets and Variables->Action new reporsitory secret
-
-* Para crear el workflow, vamos a nuestro repo en github->actions->create new workflow->set up a workflow yourself, le damos un nombre y pegamos el siguiente texto, despues guardamos y ejecutamos el workflow para asegurarnos que funciona (abrir readme para ver formato correcto):
-
-name: Sync on DOM Cloud
-
-on:
-  workflow_dispatch: {}
-  push:
-    branches:
-      - main
-      - master
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Invoke deployment hook
-        uses: distributhor/workflow-webhook@v3
-        env:
-          webhook_url: https://my.domcloud.co/api/githubdeploy
-          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
-          webhook_auth: ${{ secrets.WEBHOOK_AUTH }}
-          data: >-
-            {
-              "commands": [
-                "git reset --hard",
-                "git pull",
-                "composer install --no-interaction --prefer-dist --optimize-autoloader",
-                "npm install",
-                "npm run build",
-                "php artisan migrate --force",
-                "php artisan config:cache",
-                "php artisan route:cache",
-                "php artisan view:cache",
-                "restart"
-              ]
-            }
 
 --------------------------------------------------------------------------
-CÓMO DESPLEGAR CAMBIOS DE DEV A MAIN (PRODUCCIÓN):
---------------------------------------------------------------------------
+Para activar un cron schedule
 
-Una vez que hayas probado todo en dev y esté listo para producción:
 
-Opción 1 - GitHub UI (Recomendado):
-1. Ir a GitHub → Pull Requests → New Pull Request
-2. Base: main, Compare: dev
-3. Crear el Pull Request
-4. Mergear el PR
-5. Esto activará automáticamente el deployment a producción
+1. ssh the server
 
-Opción 2 - Command Line:
-```bash
-git checkout main
-git pull origin main
-git merge dev
-git push origin main
-```
+2. Get the public path to enter later with this commands:
 
-**Nota:** Al hacer push a main, GitHub Actions despliega automáticamente a producción (domcloud.co)
+   ```bash
+   cd ~/public_html
+   pwd
+   ```
+
+3. Get the PHP executable path:
+
+   ```bash
+   php -r 'echo PHP_BINARY, PHP_EOL;'
+   ```
+
+4. Edit your user crontab:
+
+   ```bash
+   crontab -e
+   ```
+
+5. Add the scheduler entry (one line): the one from the STEP 2 AND 3 above.
+Once the file opens in `vim`, press `G` to jump to the bottom, then type `o` (lowercase “o”) to open a new blank line and enter insert mode.
+
+   ```bash
+   0 * * * * cd /home/gruponauticadev/public_html && /opt/remi/php83/root/usr/bin/php artisan schedule:run >> /home/gruponauticadev/cron.log 2>&1
+   ```
+   - Press `Esc` to exit insert mode.
+   - Type `:wq` and press Enter to write the file and quit
+
+6. Verify cron is registered:
+
+   ```bash
+   crontab -l
+   ```
+
+   
+
+7. Optional: tail the log to confirm it runs each minute:
+
+   ```bash
+   tail -f /home/gruponauticadev/cron.log
+   ```
+  - to exit tail `Ctrl + C`
+
+   You’ll see entries like “No scheduled commands are ready to run” until automation jobs are configured.
+
+7. Optional, if says "No scheduled tasks have been defined." when running:
+
+   ```bash
+      php artisan schedule:list
+      ```
+
+   -  Check the values from the global config
+   ```bash
+   php artisan tinker
+   >>> \App\Models\GlobalConfig::getValue('gmail_sync_interval_minutes');
+   >>> \App\Models\GlobalConfig::getValue('gmail_client_id');
+   ```
+
+ With this cron in place, Laravel’s scheduler executes every minute and respects the `gmail_sync_interval_minutes` setting configured in Filament.
+
+
 
 
 --------------------------------------------------------------------------
