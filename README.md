@@ -81,15 +81,6 @@ Once the file opens in `vim`, press `G` to jump to the bottom, then type `o` (lo
 
    
 
-7. Optional: tail the log to confirm it runs each minute:
-
-   ```bash
-   tail -f /home/gruponauticadev/cron.log
-   ```
-  - to exit tail `Ctrl + C`
-
-   You’ll see entries like “No scheduled commands are ready to run” until automation jobs are configured.
-
 7. Optional, if says "No scheduled tasks have been defined." when running:
 
    ```bash
@@ -102,6 +93,16 @@ Once the file opens in `vim`, press `G` to jump to the bottom, then type `o` (lo
    >>> \App\Models\GlobalConfig::getValue('gmail_sync_interval_minutes');
    >>> \App\Models\GlobalConfig::getValue('gmail_client_id');
    ```
+   
+
+8. Optional: tail the log to confirm it runs each minute:
+
+   ```bash
+   tail -f /home/gruponauticadev/cron.log
+   ```
+  - to exit tail `Ctrl + C`
+
+   You’ll see entries like “No scheduled commands are ready to run” until automation jobs are configured.
 
  With this cron in place, Laravel’s scheduler executes every minute and respects the `gmail_sync_interval_minutes` setting configured in Filament.
 
