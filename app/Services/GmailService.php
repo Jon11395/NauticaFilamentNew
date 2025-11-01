@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Google_Client;
 use Google_Service_Gmail;
 use Illuminate\Support\Facades\Log;
@@ -98,9 +99,9 @@ class GmailService
 
 
     /**
-     * Get unread emails from Gmail
+     * Get emails received today (read or unread) from Gmail.
      */
-    public function getUnreadEmails(int $maxResults = 20): array
+    public function getTodayEmails(?int $maxResults = null): array
     {
         if (!$this->service) {
             if (!$this->initialize()) {
@@ -119,30 +120,62 @@ class GmailService
                 throw new \Exception('Failed to refresh access token. Invalid credentials.');
             }
         }
-        
-        $userEmail = $this->getUserEmail();
-        
-        // Search for unread emails
-        $query = 'is:unread';
-        
-        try {
-            $results = $this->service->users_messages->listUsersMessages($userEmail, [
-                'q' => $query,
-                'maxResults' => $maxResults,
-            ]);
 
+        $userEmail = $this->getUserEmail();
+
+        $appTimezone = config('app.timezone') ?: 'UTC';
+        $startOfDayUtc = Carbon::now($appTimezone)->startOfDay()->utc();
+        $afterTimestamp = $startOfDayUtc->copy()->subSecond()->getTimestamp();
+        $beforeTimestamp = $startOfDayUtc->copy()->addDay()->getTimestamp();
+
+        $query = sprintf('after:%d before:%d', $afterTimestamp, $beforeTimestamp);
+
+        try {
+            $options = ['q' => $query];
             $messages = [];
-            if ($results && $results->getMessages()) {
-                foreach ($results->getMessages() as $message) {
+            $pageToken = null;
+            $remaining = $maxResults;
+
+            do {
+                if ($pageToken !== null) {
+                    $options['pageToken'] = $pageToken;
+                } else {
+                    unset($options['pageToken']);
+                }
+
+                if ($remaining !== null) {
+                    $options['maxResults'] = max(min($remaining, 500), 1);
+                } else {
+                    unset($options['maxResults']);
+                }
+
+                $results = $this->service->users_messages->listUsersMessages($userEmail, $options);
+
+                if (!$results) {
+                    break;
+                }
+
+                $fetchedMessages = $results->getMessages() ?? [];
+
+                foreach ($fetchedMessages as $message) {
                     $msg = $this->service->users_messages->get($userEmail, $message->getId(), ['format' => 'full']);
                     $messages[] = $this->formatMessage($msg, $userEmail);
                 }
-            }
+
+                if ($remaining !== null) {
+                    $remaining -= count($fetchedMessages);
+                    if ($remaining <= 0) {
+                        break;
+                    }
+                }
+
+                $pageToken = $results->getNextPageToken();
+            } while ($pageToken !== null);
 
             return $messages;
         } catch (\Exception $e) {
-            Log::error('Failed to fetch unread emails: ' . $e->getMessage());
-            
+            Log::error("Failed to fetch today's emails: " . $e->getMessage());
+
             // Log additional debugging info
             if ($this->client) {
                 $token = $this->client->getAccessToken();
@@ -152,9 +185,17 @@ class GmailService
                     'has_refresh_token' => !empty($this->client->getRefreshToken()),
                 ]));
             }
-            
+
             throw $e;
         }
+    }
+
+    /**
+     * @deprecated Use getTodayEmails() instead.
+     */
+    public function getUnreadEmails(?int $maxResults = null): array
+    {
+        return $this->getTodayEmails($maxResults);
     }
 
     /**

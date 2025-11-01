@@ -18,6 +18,8 @@ class Expense extends Model
 
     protected $fillable = [
         'voucher',
+        'clave',
+        'document_type',
         'date',
         'concept',
         'amount',
@@ -31,6 +33,7 @@ class Expense extends Model
 
     protected $casts = [
         'temporal' => 'boolean',
+        'attachment' => 'array',
     ];
 
     public function project(){
@@ -71,40 +74,152 @@ class Expense extends Model
         });
 
         static::updating(function ($expense) {
-            // Check if attachment is being changed or removed
+            // Only process if attachment field is explicitly being changed
+            // Check both dirty state and if new value is actually different
             if ($expense->isDirty('attachment')) {
                 $oldAttachment = $expense->getOriginal('attachment');
-    
-                if ($oldAttachment) {
-                    if (is_array($oldAttachment)) {
-                        foreach ($oldAttachment as $filePath) {
-                            if (Storage::disk('public')->exists($filePath)) {
-                                Storage::disk('public')->delete($filePath);
-                            }
-                        }
-                    } else if (is_string($oldAttachment)) {
-                        if (Storage::disk('public')->exists($oldAttachment)) {
-                            Storage::disk('public')->delete($oldAttachment);
+                $newAttachment = $expense->attachment;
+                
+                // Helper to normalize attachment to array of clean paths
+                $normalizeAttachment = function($attachment) {
+                    $paths = [];
+                    if (is_array($attachment)) {
+                        $paths = $attachment;
+                    } else if (is_string($attachment) && !empty($attachment)) {
+                        $decoded = json_decode($attachment, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $paths = $decoded;
+                        } else {
+                            $paths = [$attachment];
                         }
                     }
+                    
+                    // Normalize each path
+                    return array_map(function($path) {
+                        if (!is_string($path) || empty($path)) return null;
+                        $cleaned = trim($path, " \t\n\r\0\x0B'\"");
+                        $cleaned = ltrim($cleaned, '/');
+                        return preg_replace('#^storage/#', '', $cleaned);
+                    }, array_filter($paths, fn($p) => !empty($p)));
+                };
+                
+                $oldPathsNormalized = $normalizeAttachment($oldAttachment);
+                $newPathsNormalized = $normalizeAttachment($newAttachment);
+                
+                // Sort both arrays for comparison
+                sort($oldPathsNormalized);
+                sort($newPathsNormalized);
+                
+                // Only proceed if attachments are actually different
+                if ($oldPathsNormalized !== $newPathsNormalized) {
+                    // Only delete files that are not in the new attachment
+                    $filesToDelete = array_diff($oldPathsNormalized, $newPathsNormalized);
+                    
+                    foreach ($filesToDelete as $filePath) {
+                        if (empty($filePath) || !is_string($filePath)) {
+                            continue;
+                        }
+                        
+                        // Clean the path
+                        $cleanPath = ltrim($filePath, '/');
+                        $cleanPath = preg_replace('#^storage/#', '', $cleanPath);
+                        
+                        // Check if this file is used by any other expense before deleting
+                        $isUsedByOtherExpense = self::where('id', '!=', $expense->id)
+                            ->where(function ($query) use ($cleanPath, $filePath) {
+                                $query->where('attachment', 'like', '%' . $cleanPath . '%')
+                                    ->orWhere('attachment', 'like', '%' . $filePath . '%')
+                                    ->orWhereJsonContains('attachment', $cleanPath)
+                                    ->orWhereJsonContains('attachment', $filePath);
+                            })
+                            ->exists();
+                        
+                        if (!$isUsedByOtherExpense && Storage::disk('public')->exists($cleanPath)) {
+                            \Log::info('Deleting attachment file during update', [
+                                'expense_id' => $expense->id,
+                                'file_path' => $cleanPath,
+                            ]);
+                            Storage::disk('public')->delete($cleanPath);
+                        }
+                    }
+                } else {
+                    // Attachments are the same (just normalized differently), restore original
+                    // This prevents Laravel from treating it as changed
+                    $expense->attachment = $oldAttachment;
                 }
             }
         });
 
         static::deleting(function ($expense) {
-            // If 'attachment' is an array of files (multiple attachments)
+            // Delete related credit notes (nota_credito) when expense is deleted
+            // Credit notes are linked by the 'clave' field (which stores the original invoice's clave)
+            if ($expense->clave && $expense->provider_id) {
+                $relatedCreditNotes = self::where('document_type', 'nota_credito')
+                    ->where('clave', $expense->clave)
+                    ->where('provider_id', $expense->provider_id)
+                    ->where('id', '!=', $expense->id)
+                    ->get();
+
+                foreach ($relatedCreditNotes as $creditNote) {
+                    \Log::info('Deleting related credit note', [
+                        'expense_id' => $expense->id,
+                        'credit_note_id' => $creditNote->id,
+                        'clave' => $expense->clave,
+                    ]);
+                    $creditNote->delete();
+                }
+            }
+
+            // Delete attachment files, but only if they're not used by other expenses
             $attachments = $expense->attachment;
 
+            // Normalize attachments to array
+            $attachmentPaths = [];
             if (is_array($attachments)) {
-                foreach ($attachments as $filePath) {
-                    if (Storage::disk('public')->exists($filePath)) {
-                        Storage::disk('public')->delete($filePath);
-                    }
+                $attachmentPaths = $attachments;
+            } else if (is_string($attachments) && !empty($attachments)) {
+                $decoded = json_decode($attachments, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $attachmentPaths = $decoded;
+                } else {
+                    $attachmentPaths = [$attachments];
                 }
-            } else if (is_string($attachments)) {
-                // In case of single file stored as string
-                if (Storage::disk('public')->exists($attachments)) {
-                    Storage::disk('public')->delete($attachments);
+            }
+
+            // Check each attachment before deleting
+            foreach ($attachmentPaths as $filePath) {
+                if (empty($filePath) || !is_string($filePath)) {
+                    continue;
+                }
+
+                // Clean the path
+                $cleanPath = ltrim($filePath, '/');
+                $cleanPath = preg_replace('#^storage/#', '', $cleanPath);
+
+                // Check if this file is used by any other expense
+                $isUsedByOtherExpense = self::where('id', '!=', $expense->id)
+                    ->where(function ($query) use ($cleanPath, $filePath) {
+                        $query->where('attachment', 'like', '%' . $cleanPath . '%')
+                            ->orWhere('attachment', 'like', '%' . $filePath . '%')
+                            ->orWhereJsonContains('attachment', $cleanPath)
+                            ->orWhereJsonContains('attachment', $filePath);
+                    })
+                    ->exists();
+
+                if (!$isUsedByOtherExpense) {
+                    // File is not used by any other expense, safe to delete
+                    if (Storage::disk('public')->exists($cleanPath)) {
+                        \Log::info('Deleting attachment file', [
+                            'expense_id' => $expense->id,
+                            'file_path' => $cleanPath,
+                        ]);
+                        Storage::disk('public')->delete($cleanPath);
+                    }
+                } else {
+                    \Log::info('Skipping deletion - file is used by other expense', [
+                        'expense_id' => $expense->id,
+                        'file_path' => $cleanPath,
+                    ]);
                 }
             }
         });

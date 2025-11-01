@@ -24,7 +24,7 @@ class ListTemporalExpenses extends ListRecords
                 ->color('info')
                 ->action(function (): void {
                     try {
-                        $summary = app(GmailReceiptImportService::class)->import(25);
+                        $summary = app(GmailReceiptImportService::class)->import();
 
                         $this->dispatch('temporal-expenses-updated');
 
@@ -42,6 +42,8 @@ class ListTemporalExpenses extends ListRecords
                             ->success()
                             ->send();
 
+                        // Refresh the page to update navigation badge
+                        $this->redirect(static::getResource()::getUrl('index'));
 
                     } catch (\Throwable $exception) {
                         Notification::make()

@@ -26,8 +26,12 @@ class MonthlyFinancialSummary extends BaseWidget
         $thisMonthRevenue = Income::whereBetween('date', [$thisMonth, $thisMonth->copy()->endOfMonth()])->sum('total_deposited');
         $lastMonthRevenue = Income::whereBetween('date', [$lastMonth, $lastMonth->copy()->endOfMonth()])->sum('total_deposited');
 
-        $thisMonthExpenses = Expense::whereBetween('date', [$thisMonth, $thisMonth->copy()->endOfMonth()])->sum('amount');
-        $lastMonthExpenses = Expense::whereBetween('date', [$lastMonth, $lastMonth->copy()->endOfMonth()])->sum('amount');
+        $thisMonthExpenses = Expense::whereBetween('date', [$thisMonth, $thisMonth->copy()->endOfMonth()])
+            ->where('document_type', '!=', 'nota_credito')
+            ->sum('amount');
+        $lastMonthExpenses = Expense::whereBetween('date', [$lastMonth, $lastMonth->copy()->endOfMonth()])
+            ->where('document_type', '!=', 'nota_credito')
+            ->sum('amount');
 
         $totalProjects = Project::where('status','in_progress')->count();
 
@@ -48,7 +52,9 @@ class MonthlyFinancialSummary extends BaseWidget
             ->get()
             ->map(function ($project) {
                 $totalIncome = $project->incomes->sum('total_deposited');
-                $totalExpenses = $project->expenses->sum('amount');
+                $totalExpenses = $project->expenses()
+                    ->where('document_type', '!=', 'nota_credito')
+                    ->sum('amount');
                 $profit = $totalIncome - $totalExpenses;
                 $profitMargin = $totalIncome > 0 ? ($profit / $totalIncome) * 100 : 0;
                 

@@ -37,6 +37,7 @@ class ProjectDifferenceOverview extends BaseWidget
 
         $totalExpensesPaid = Expense::where('project_id', $this->record->id)
             ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
             ->sum('amount');
 
         
@@ -67,10 +68,11 @@ class ProjectDifferenceOverview extends BaseWidget
             })
             ->toArray();
 
-        // Get monthly expenses
+        // Get monthly expenses (excluding credit notes)
         $monthlyExpenses = Expense::where('project_id', $this->record->id)
             ->whereBetween('date', [$startDate, $endDate])
             ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
             ->select(DB::raw('SUM(amount) as total'), DB::raw('MONTH(date) as month'), DB::raw('YEAR(date) as year'))
             ->groupBy(DB::raw('YEAR(date)'), DB::raw('MONTH(date)'))
             ->get()

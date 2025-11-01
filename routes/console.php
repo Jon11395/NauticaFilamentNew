@@ -8,10 +8,29 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('gmail:import-receipts {--limit=20}', function (GmailReceiptImportService $importer) {
-    $limit = (int) $this->option('limit');
+Artisan::command('gmail:import-receipts {--limit= : Número máximo de correos a procesar hoy}', function (GmailReceiptImportService $importer) {
+    $limitOption = $this->option('limit');
+    $limit = null;
 
-    $this->info("Buscando hasta {$limit} correos no leídos en Gmail...");
+    if ($limitOption !== null && $limitOption !== '') {
+        if (!is_numeric($limitOption)) {
+            $this->error('La opción --limit debe ser un número positivo o dejarse vacía para procesar todos los correos del día.');
+            return;
+        }
+
+        $limit = (int) $limitOption;
+
+        if ($limit <= 0) {
+            $this->error('La opción --limit debe ser mayor que cero o dejarse vacía para procesar todos los correos del día.');
+            return;
+        }
+    }
+
+    if ($limit === null) {
+        $this->info('Buscando todos los correos recibidos hoy en Gmail...');
+    } else {
+        $this->info("Buscando hasta {$limit} correos recibidos hoy en Gmail...");
+    }
 
     $summary = $importer->import($limit);
 
@@ -29,14 +48,6 @@ Artisan::command('gmail:import-receipts {--limit=20}', function (GmailReceiptImp
         }
     }
 
-    if (!empty($summary['notes'])) {
-        $this->newLine();
-        $this->info('Notas:');
-        foreach ($summary['notes'] as $note) {
-            $this->line("  - {$note}");
-        }
-    }
-
     if (!empty($summary['errors'])) {
         $this->newLine();
         $this->error('Errores:');
@@ -44,4 +55,4 @@ Artisan::command('gmail:import-receipts {--limit=20}', function (GmailReceiptImp
             $this->line("  - {$error}");
         }
     }
-})->purpose('Importar comprobantes XML desde Gmail como gastos temporales');
+})->purpose('Importar comprobantes XML recibidos hoy desde Gmail como gastos temporales');

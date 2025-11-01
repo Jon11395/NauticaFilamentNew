@@ -300,12 +300,12 @@ class GlobalConfig extends Page implements HasForms, HasActions
                         return;
                     }
 
-                    // Try to get unread emails to verify the connection
-                    $emails = $gmailService->getUnreadEmails(20);
+                    // Try to get today's emails to verify the connection
+                    $emails = $gmailService->getTodayEmails(20);
                     
                     Notification::make()
                         ->title('Conexión exitosa! ✓')
-                        ->body('La conexión de Gmail está funcionando correctamente! Se encontraron ' . count($emails) . ' correos electrónicos no leídos.')
+                        ->body('La conexión de Gmail está funcionando correctamente! Se encontraron ' . count($emails) . ' correos electrónicos recibidos hoy.')
                         ->success()
                         ->send();
                 } catch (\Exception $e) {

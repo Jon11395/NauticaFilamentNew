@@ -47,7 +47,7 @@ class Kernel extends ConsoleKernel
             return;
         }
 
-        $schedule->command('gmail:import-receipts --limit=25')
+        $schedule->command('gmail:import-receipts')
             ->cron($cronExpression)
             ->name('gmail:import-receipts-auto')
             ->withoutOverlapping()

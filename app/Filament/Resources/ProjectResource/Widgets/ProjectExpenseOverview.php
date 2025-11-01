@@ -37,12 +37,19 @@ class ProjectExpenseOverview extends BaseWidget
         $endDate = Carbon::now();
         $startDate = $endDate->copy()->subMonths(6);
 
-        //expenses
-        $totalExpenses = number_format(Expense::where('project_id', $this->record->id)->where('type', 'paid')->sum('amount'), 2);
-        $numberofexpenses = Expense::where('project_id', $this->record->id)->where('type', 'paid')->count();
+        //expenses (excluding credit notes)
+        $totalExpenses = number_format(Expense::where('project_id', $this->record->id)
+            ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
+            ->sum('amount'), 2);
+        $numberofexpenses = Expense::where('project_id', $this->record->id)
+            ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
+            ->count();
         $expenseCountsPaid = Expense::where('project_id', $this->record->id)
             ->whereBetween('date', [$startDate, $endDate])
             ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
             ->select(DB::raw('COUNT(*) as count'), DB::raw('MONTH(date) as month'), DB::raw('YEAR(date) as year'))
             ->groupBy(DB::raw('YEAR(date)'), DB::raw('MONTH(date)'))
             ->orderBy(DB::raw('YEAR(date)'), 'ASC')
@@ -112,13 +119,20 @@ class ProjectExpenseOverview extends BaseWidget
             ->toArray();
 
    
-        //expenses to pay
-        $totalExpensesUnpaid = number_format(Expense::where('project_id', $this->record->id)->where('type', 'unpaid')->sum('amount'), 2);
-        $numberofexpensesUnpaid = Expense::where('project_id', $this->record->id)->where('type', 'unpaid')->count();
+        //expenses to pay (excluding credit notes)
+        $totalExpensesUnpaid = number_format(Expense::where('project_id', $this->record->id)
+            ->where('type', 'unpaid')
+            ->where('document_type', '!=', 'nota_credito')
+            ->sum('amount'), 2);
+        $numberofexpensesUnpaid = Expense::where('project_id', $this->record->id)
+            ->where('type', 'unpaid')
+            ->where('document_type', '!=', 'nota_credito')
+            ->count();
 
         $expenseCountsUnpaid = Expense::where('project_id', $this->record->id)
             ->whereBetween('date', [$startDate, $endDate])
             ->where('type', 'unpaid')
+            ->where('document_type', '!=', 'nota_credito')
             ->select(DB::raw('COUNT(*) as count'), DB::raw('MONTH(date) as month'), DB::raw('YEAR(date) as year'))
             ->groupBy(DB::raw('YEAR(date)'), DB::raw('MONTH(date)'))
             ->orderBy(DB::raw('YEAR(date)'), 'ASC')

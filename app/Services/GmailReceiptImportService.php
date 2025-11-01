@@ -22,7 +22,7 @@ class GmailReceiptImportService
     ) {
     }
 
-    public function import(int $maxResults = 20): array
+    public function import(?int $maxResults = null): array
     {
         $summary = [
             'messages_processed' => 0,
@@ -34,19 +34,18 @@ class GmailReceiptImportService
         ];
 
         try {
-            $messages = $this->gmailService->getUnreadEmails($maxResults);
+            $messages = $this->gmailService->getTodayEmails($maxResults);
         } catch (\Throwable $exception) {
             Log::error('Unable to fetch Gmail messages for receipt import: ' . $exception->getMessage(), [
                 'exception' => $exception,
             ]);
 
-            $summary['errors'][] = 'Failed to fetch unread Gmail messages: ' . $exception->getMessage();
+            $summary['errors'][] = "Failed to fetch today's Gmail messages: " . $exception->getMessage();
 
             return $summary;
         }
 
-        $messageIdsToMark = [];
-
+        // Process all receipts (including credit notes) as temporal expenses
         foreach ($messages as $message) {
             $summary['messages_processed']++;
 
@@ -96,6 +95,7 @@ class GmailReceiptImportService
                     continue;
                 }
 
+                // Process all receipts as temporal expenses
                 $context = $this->resolveContext($parsed, $message, $attachment);
 
                 if (!$context['provider_id']) {
@@ -154,8 +154,15 @@ class GmailReceiptImportService
                         $storedPdfPath = $this->storeFirstPdfAttachment($pdfAttachments);
                     }
 
+                    // For credit notes, use the reference number (clave of original invoice) instead of the credit note's own clave
+                    $claveToStore = ($parsed['receipt_type'] ?? null) === 'nota_credito' && isset($parsed['reference_info']['numero'])
+                        ? $parsed['reference_info']['numero']
+                        : ($parsed['clave'] ?? null);
+
                     Expense::create([
                         'voucher' => $normalizedVoucher,
+                        'clave' => $claveToStore,
+                        'document_type' => $parsed['receipt_type'] ?? null,
                         'date' => $this->resolveIssueDate($parsed['issue_date'] ?? null),
                         'concept' => $concept,
                         'amount' => $amount,
@@ -185,22 +192,6 @@ class GmailReceiptImportService
                 }
             }
 
-            if ($createdForMessage) {
-                $messageIdsToMark[] = $message['id'];
-            }
-        }
-
-        if (!empty($messageIdsToMark)) {
-            try {
-                $this->gmailService->markAsRead($messageIdsToMark);
-            } catch (\Throwable $exception) {
-                Log::warning('No se pudo marcar los correos como leídos después de importarlos.', [
-                    'message_ids' => $messageIdsToMark,
-                    'exception' => $exception,
-                ]);
-
-                $summary['errors'][] = 'No se pudieron marcar como leídos algunos correos procesados.';
-            }
         }
 
         return $summary;
@@ -871,6 +862,222 @@ class GmailReceiptImportService
         })->filter()
             ->unique()
             ->values();
+    }
+
+    protected function processCreditNote(array $parsed, array $message, array $attachment, array &$summary): bool
+    {
+        try {
+            // Get reference information
+            $referenceInfo = $parsed['reference_info'] ?? null;
+            
+            if (!$referenceInfo || !isset($referenceInfo['numero'])) {
+                $summary['skipped'][] = sprintf(
+                    'La nota de crédito %s no tiene información de referencia válida.',
+                    $parsed['voucher'] ?? 'sin consecutivo'
+                );
+                return false;
+            }
+
+            // Resolve context (provider, project, etc)
+            $context = $this->resolveContext($parsed, $message, $attachment);
+
+            if (!$context['provider_id']) {
+                $summary['skipped'][] = sprintf(
+                    'No se pudo resolver el proveedor para la nota de crédito %s (%s).',
+                    $parsed['voucher'] ?? 'sin consecutivo',
+                    $parsed['provider_name'] ?? 'sin emisor'
+                );
+                return false;
+            }
+
+            // Find the referenced expense using the reference number
+            $referencedExpense = $this->findReferencedExpense($referenceInfo['numero'], $context['provider_id']);
+
+            $creditAmount = $this->normalizeAmount($parsed['amount'] ?? null);
+
+            if ($creditAmount === null) {
+                $summary['skipped'][] = sprintf(
+                    'La nota de crédito %s no tiene un monto válido.',
+                    $parsed['voucher'] ?? 'sin consecutivo'
+                );
+                return false;
+            }
+
+            // Store the credit note attachment
+            $attachmentPath = $this->storeAttachment($attachment['data'], $attachment['filename'] ?? null);
+            $pdfAttachments = array_values(array_filter(
+                $message['attachments'] ?? [],
+                fn (array $att) => $this->looksLikePdfAttachment($att)
+            ));
+            $storedPdfPath = $this->storeFirstPdfAttachment($pdfAttachments);
+            $creditAmountFloat = (float) $creditAmount;
+
+            // If referenced expense exists, adjust it
+            if ($referencedExpense) {
+                // Calculate new amount (original - credit)
+                $originalAmount = (float) $referencedExpense->amount;
+                $newAmount = $originalAmount - $creditAmountFloat;
+
+                // Update the referenced expense
+                $oldConcept = $referencedExpense->concept;
+                $creditReason = $referenceInfo['razon'] ?? 'Nota de crédito aplicada';
+                
+                // Build updated concept
+                $updatedConcept = $oldConcept . '<br/><small style="color:#dc3545;">[NOTA DE CRÉDITO: ' . htmlspecialchars($creditReason, ENT_QUOTES, 'UTF-8') . ' por ₡' . number_format($creditAmountFloat, 2, '.', ',') . ']</small>';
+                
+                // Determine if we need to attach the credit note
+                $currentAttachment = $referencedExpense->attachment;
+                $attachmentPayload = $currentAttachment;
+                
+                // If there's a PDF for the credit note, add it to attachments
+                if ($storedPdfPath) {
+                    if (is_array($currentAttachment)) {
+                        $attachmentPayload = array_merge($currentAttachment, [$storedPdfPath]);
+                    } else if (is_string($currentAttachment)) {
+                        $attachmentPayload = [$currentAttachment, $storedPdfPath];
+                    } else {
+                        $attachmentPayload = $storedPdfPath;
+                    }
+                }
+
+                // Update the expense
+                $referencedExpense->update([
+                    'amount' => $newAmount >= 0 ? number_format($newAmount, 4, '.', '') : '0.0000',
+                    'concept' => $updatedConcept,
+                    'attachment' => $attachmentPayload,
+                ]);
+
+                $summary['notes'][] = sprintf(
+                    'Nota de crédito %s aplicada al gasto %s: reducido de ₡%s a ₡%s.',
+                    $parsed['voucher'] ?? 'sin consecutivo',
+                    $referenceInfo['numero'],
+                    number_format($originalAmount, 2, '.', ','),
+                    number_format(max(0, $newAmount), 2, '.', ',')
+                );
+
+                Log::info('Nota de crédito procesada exitosamente', [
+                    'credit_note_voucher' => $parsed['voucher'],
+                    'referenced_expense_id' => $referencedExpense->id,
+                    'original_amount' => $originalAmount,
+                    'credit_amount' => $creditAmountFloat,
+                    'new_amount' => $newAmount,
+                ]);
+
+                return true;
+            }
+
+            // If no referenced expense found, create a temporal expense for the credit note
+            $normalizedVoucher = $this->normalizeVoucher($parsed['voucher'] ?? null);
+            
+            if ($normalizedVoucher === null) {
+                $summary['skipped'][] = sprintf(
+                    'La nota de crédito de %s no tiene un consecutivo numérico válido.',
+                    $parsed['provider_name'] ?? 'proveedor desconocido'
+                );
+                return false;
+            }
+
+            // Check if this credit note already exists
+            if ($this->expenseAlreadyExists($normalizedVoucher, $context['provider_id'])) {
+                $summary['skipped'][] = sprintf(
+                    'Ya existe un gasto temporal con la nota de crédito %s para el proveedor #%d.',
+                    $normalizedVoucher,
+                    $context['provider_id']
+                );
+                return false;
+            }
+
+            // Create temporal expense for credit note
+            $concept = $this->buildConcept($parsed, $message);
+            $creditReason = $referenceInfo['razon'] ?? 'Nota de crédito';
+            
+            // Build concept showing it's a credit note
+            $creditConcept = $concept ? $concept . '<br/><small style="color:#dc3545;">[NOTA DE CRÉDITO: ' . htmlspecialchars($creditReason, ENT_QUOTES, 'UTF-8') . ' - Referencia: ' . htmlspecialchars($referenceInfo['numero'], ENT_QUOTES, 'UTF-8') . ']</small>' : '[NOTA DE CRÉDITO]';
+
+            Expense::create([
+                'voucher' => $normalizedVoucher,
+                'clave' => $parsed['clave'] ?? null,
+                'date' => $this->resolveIssueDate($parsed['issue_date'] ?? null),
+                'concept' => $creditConcept,
+                'amount' => $creditAmount,
+                'type' => $context['type'],
+                'provider_id' => $context['provider_id'],
+                'project_id' => $context['project_id'],
+                'expense_type_id' => $context['expense_type_id'],
+                'attachment' => $this->buildAttachmentPayload($storedPdfPath, $attachmentPath),
+                'temporal' => true,
+            ]);
+
+            $summary['notes'][] = sprintf(
+                'Nota de crédito %s creada como gasto temporal (referencia al gasto %s no encontrada).',
+                $parsed['voucher'] ?? 'sin consecutivo',
+                $referenceInfo['numero']
+            );
+            $summary['expenses_created']++;
+
+            Log::info('Nota de crédito creada como gasto temporal', [
+                'credit_note_voucher' => $parsed['voucher'],
+                'referenced_number' => $referenceInfo['numero'],
+                'amount' => $creditAmountFloat,
+            ]);
+
+            return true;
+        } catch (\Throwable $exception) {
+            $error = sprintf(
+                'Error al procesar la nota de crédito %s: %s',
+                $parsed['voucher'] ?? 'sin consecutivo',
+                $exception->getMessage()
+            );
+
+            Log::error($error, [
+                'exception' => $exception,
+                'message_id' => $message['id'] ?? null,
+            ]);
+
+            $summary['errors'][] = $error;
+            return false;
+        }
+    }
+
+    protected function findReferencedExpense(string $referenceNumber, int $providerId): ?Expense
+    {
+        // First try to find by exact Clave (the 50-digit unique identifier)
+        $expense = Expense::query()
+            ->where('provider_id', $providerId)
+            ->where('clave', $referenceNumber)
+            ->first();
+
+        if ($expense) {
+            return $expense;
+        }
+
+        // If not found by Clave, try by voucher number
+        $expense = Expense::query()
+            ->where('provider_id', $providerId)
+            ->where(function ($query) use ($referenceNumber) {
+                $query->where('voucher', $referenceNumber)
+                    ->orWhereRaw('voucher LIKE ?', [substr($referenceNumber, -10) . '%']);
+            })
+            ->first();
+
+        if ($expense) {
+            return $expense;
+        }
+
+        // Extract the voucher number from the Clave (last 20 digits typically contain the NumeroConsecutivo)
+        // The Clave format is: country code + company + location + environment + consecutive + security
+        // The consecutive number is usually in the last portion
+        $normalizedReference = $this->normalizeVoucher($referenceNumber);
+
+        if (!$normalizedReference) {
+            return null;
+        }
+
+        // Try to find by normalized voucher
+        return Expense::query()
+            ->where('provider_id', $providerId)
+            ->where('voucher', $normalizedReference)
+            ->first();
     }
 }
 

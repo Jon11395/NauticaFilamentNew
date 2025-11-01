@@ -16,22 +16,38 @@ class TemporalExpensesStats extends BaseWidget
     {
         $baseQuery = Expense::query()
             ->where('temporal', true)
-            ->whereNull('project_id');
+            ->whereNull('project_id')
+            ->where('document_type', '!=', 'nota_credito'); // Exclude credit notes
 
         $totalExpenses = (clone $baseQuery)->count();
         $totalAmount = (clone $baseQuery)->sum('amount');
         $avgAmount = $totalExpenses > 0 ? $totalAmount / $totalExpenses : 0;
 
-        return [
+        // Credit notes query
+        $creditNotesQuery = Expense::query()
+            ->where('temporal', true)
+            ->whereNull('project_id')
+            ->where('document_type', 'nota_credito');
+
+        $totalCreditNotes = (clone $creditNotesQuery)->count();
+        $totalCreditAmount = (clone $creditNotesQuery)->sum('amount');
+
+        $cards = [
             Card::make('Gastos temporales', number_format($totalExpenses))
-                ->description('Registros por asignar')
-                ->icon('heroicon-o-inbox-stack')
-                ->color('warning'),
-            Card::make('Monto total', '₡' . number_format($totalAmount, 2, ',', '.'))
-                ->description('Suma total por asignar')
+                ->description('₡' . number_format($totalAmount, 2, ',', '.') . ' total por asignar (sin notas de crédito)')
                 ->icon('heroicon-o-banknotes')
                 ->color('success'),
         ];
+
+        // Add credit notes stat if there are any
+        if ($totalCreditNotes > 0) {
+            $cards[] = Card::make('Notas de crédito', number_format($totalCreditNotes))
+                ->description('₡' . number_format($totalCreditAmount, 2, ',', '.') . ' por aplicar')
+                ->icon('heroicon-o-minus-circle')
+                ->color('danger');
+        }
+
+        return $cards;
     }
 
     protected function getColumns(): int

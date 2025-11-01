@@ -64,23 +64,26 @@ class ManageProjectExpenses extends ManageRelatedRecords
         $tabs = [];
 
         $tabs[] = Tab::make('Todas') 
-            ->badge(Expense::where('project_id', $this->record->id)->count())
+            ->badge(Expense::where('project_id', $this->record->id)->where('document_type', '!=', 'nota_credito')->count())
             ->icon('heroicon-s-arrow-right-circle')
-            ->badgeColor('info');
+            ->badgeColor('info')
+            ->modifyQueryUsing(function ($query) {
+                return $query->where('document_type', '!=', 'nota_credito');
+            });
     
         $tabs[] = Tab::make('Pagas') 
-            ->badge(Expense::where('project_id', $this->record->id)->where('type', 'paid')->count())
+            ->badge(Expense::where('project_id', $this->record->id)->where('type', 'paid')->where('document_type', '!=', 'nota_credito')->count())
             ->icon('heroicon-s-arrow-trending-up') 
             ->badgeColor('success')
             ->modifyQueryUsing(function ($query) {
-                return $query->where('type', 'paid');
+                return $query->where('type', 'paid')->where('document_type', '!=', 'nota_credito');
             });
         $tabs[] = Tab::make('Por pagar') 
-            ->badge(Expense::where('project_id', $this->record->id)->where('type', 'unpaid')->count())
+            ->badge(Expense::where('project_id', $this->record->id)->where('type', 'unpaid')->where('document_type', '!=', 'nota_credito')->count())
             ->icon('heroicon-s-arrow-trending-down')
             ->badgeColor('warning')
             ->modifyQueryUsing(function ($query) {
-                return $query->where('type', 'unpaid');
+                return $query->where('type', 'unpaid')->where('document_type', '!=', 'nota_credito');
             });
     
 
@@ -227,6 +230,7 @@ class ManageProjectExpenses extends ManageRelatedRecords
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->where('document_type', '!=', 'nota_credito'))
             ->heading('Gastos')
             ->description('Lista de gastos')
             ->columns([
@@ -323,13 +327,125 @@ class ManageProjectExpenses extends ManageRelatedRecords
                 
             ])
             ->actions([
-                Action::make('view_attachment')
-                    ->label('Ver adjunto')
-                    ->url(fn (Expense $record) => $this->buildPrimaryAttachmentUrl($record))
-                    ->openUrlInNewTab()
+                Action::make('view_attachments')
+                    ->label(fn (Expense $record) => $this->getAttachmentActionLabel($record))
                     ->color('warning')
                     ->icon('heroicon-o-eye')
-                    ->visible(fn (Expense $record) => $this->primaryAttachmentExists($record)),
+                    ->visible(fn (Expense $record) => !empty($record->attachment))
+                    ->modal()
+                    ->modalHeading('Ver documentos adjuntos')
+                    ->modalContent(function (Expense $record) {
+                        $attachments = $this->getAllAttachmentPaths($record);
+                        
+                        if (empty($attachments)) {
+                            return new \Illuminate\Support\HtmlString('<p>No hay documentos adjuntos.</p>');
+                        }
+                        
+                        // Show list of attachments (works for both single and multiple)
+                        $html = '<div class="space-y-2">';
+                        foreach ($attachments as $index => $path) {
+                            // Path should already be normalized from getAllAttachmentPaths
+                            // But ensure it's clean for URL generation - remove quotes and whitespace
+                            $cleanPath = trim($path, " \t\n\r\0\x0B'\"");
+                            $cleanPath = ltrim($cleanPath, '/');
+                            $cleanPath = preg_replace('#^storage/#', '', $cleanPath);
+                            
+                            // Verify file exists and try to find the correct path if needed
+                            $foundPath = $cleanPath;
+                            $fileExists = Storage::disk('public')->exists($cleanPath);
+                            
+                            // If file doesn't exist, try to find it recursively
+                            if (!$fileExists) {
+                                $filename = basename($cleanPath);
+                                
+                                // Try searching recursively in expenses/attachments
+                                $foundInExpenses = $this->findFileRecursively('expenses/attachments', $filename);
+                                if ($foundInExpenses) {
+                                    $foundPath = $foundInExpenses;
+                                    $fileExists = true;
+                                } else {
+                                    // Try searching recursively in gmail-receipts
+                                    $foundInGmail = $this->findFileRecursively('gmail-receipts', $filename);
+                                    if ($foundInGmail) {
+                                        $foundPath = $foundInGmail;
+                                        $fileExists = true;
+                                    } else {
+                                        // Try common variations
+                                        $variations = [
+                                            $cleanPath,
+                                            'expenses/attachments/' . $filename,
+                                            'gmail-receipts/' . $filename,
+                                        ];
+                                        
+                                        foreach ($variations as $variation) {
+                                            if (Storage::disk('public')->exists($variation)) {
+                                                $foundPath = $variation;
+                                                $fileExists = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Generate URL using the found/existing path
+                            // Ensure path is properly encoded and no quotes
+                            $urlPath = 'storage/' . ltrim($foundPath, '/');
+                            $url = asset($urlPath);
+                            $fileName = basename($foundPath);
+                            
+                            // Try to identify which document is the credit note
+                            // Credit notes are typically added last when applying "Aplicar al gasto"
+                            // We can check if the concept contains "[NOTA DE CRÉDITO" to help identify
+                            $hasCreditNoteInfo = strpos($record->concept ?? '', '[NOTA DE CRÉDITO') !== false;
+                            
+                            // If there are multiple attachments and we found credit note info in concept,
+                            // and this is not the first one, it's likely the credit note
+                            $documentLabel = '';
+                            if (count($attachments) > 1 && $hasCreditNoteInfo) {
+                                if ($index === count($attachments) - 1) {
+                                    $documentLabel = '📄 Nota de crédito: ' . $fileName;
+                                } else {
+                                    $documentLabel = '📋 Factura original: ' . $fileName;
+                                }
+                            } else {
+                                $documentLabel = '📄 Documento ' . ($index + 1) . ': ' . $fileName;
+                            }
+                            
+                            $badgeHtml = $fileExists 
+                                ? '<span class="text-xs text-green-600 dark:text-green-400">✓ Existe</span>'
+                                : '<span class="text-xs text-yellow-600 dark:text-yellow-400">⚠ Verificar</span>';
+                            
+                            // Clean URL to remove any problematic characters
+                            $cleanUrl = htmlspecialchars($url, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                            
+                            $html .= sprintf(
+                                '<div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-medium">%s</span>
+                                        <span class="text-xs text-gray-500 mt-1">%s</span>
+                                        %s
+                                    </div>
+                                    <a href="%s" target="_blank" class="inline-flex items-center px-3 py-1 text-sm font-medium text-white bg-primary-600 rounded hover:bg-primary-700">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                        Ver
+                                    </a>
+                                </div>',
+                                htmlspecialchars($documentLabel, ENT_QUOTES, 'UTF-8'),
+                                htmlspecialchars($foundPath, ENT_QUOTES, 'UTF-8'),
+                                $badgeHtml,
+                                $cleanUrl
+                            );
+                        }
+                        $html .= '</div>';
+                        
+                        return new \Illuminate\Support\HtmlString($html);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar'),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
                 //Tables\Actions\DissociateAction::make(),
@@ -393,9 +509,201 @@ class ManageProjectExpenses extends ManageRelatedRecords
 
     protected function primaryAttachmentExists(Expense $record): bool
     {
-        $path = $this->getPrimaryAttachmentPath($record->attachment);
+        return $this->hasAnyAttachment($record);
+    }
 
-        return $path ? Storage::disk('public')->exists($path) : false;
+    protected function hasAnyAttachment(Expense $record): bool
+    {
+        // First, check if attachment field has any value at all
+        if (empty($record->attachment)) {
+            return false;
+        }
+        
+        // Return true if there's any attachment value, even if we can't verify file existence
+        // The modal will handle showing "no attachments" if files don't exist
+        return true;
+    }
+
+    protected function getAllAttachmentPaths(Expense $record): array
+    {
+        if (empty($record->attachment)) {
+            return [];
+        }
+
+        // With the 'array' cast, Laravel should automatically deserialize JSON to array
+        // But we need to handle cases where data might be in different formats
+        $paths = [];
+        
+        // Get raw attribute to check actual format
+        $rawAttachment = $record->getAttributes()['attachment'] ?? null;
+        
+        // Try to get from cast first
+        if (is_array($record->attachment) && !empty($record->attachment)) {
+            $paths = $record->attachment;
+        } else if (!empty($rawAttachment)) {
+            // Raw value exists, try to parse it
+            if (is_string($rawAttachment)) {
+                // Try to decode JSON first
+                $decoded = json_decode($rawAttachment, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $paths = $decoded;
+                } else {
+                    // It's a plain string, treat as single attachment
+                    $paths = [$rawAttachment];
+                }
+            } else if (is_array($rawAttachment)) {
+                $paths = $rawAttachment;
+            }
+        }
+        
+        // Log for debugging
+        if (empty($paths)) {
+            \Log::warning('No attachment paths found for expense', [
+                'expense_id' => $record->id,
+                'attachment_raw' => $rawAttachment,
+                'attachment_cast' => $record->attachment,
+                'attachment_type_raw' => gettype($rawAttachment),
+                'attachment_type_cast' => gettype($record->attachment),
+            ]);
+        } else {
+            \Log::info('Found attachment paths', [
+                'expense_id' => $record->id,
+                'paths_count' => count($paths),
+                'paths' => $paths,
+            ]);
+        }
+
+        // Filter out empty values and find files that actually exist
+        return collect($paths)
+            ->map(function ($path) {
+                // Normalize the path
+                if (empty($path) || !is_string($path)) {
+                    return null;
+                }
+                
+                // Clean the path - remove quotes, leading slashes, and whitespace
+                $cleanPath = trim($path, " \t\n\r\0\x0B'\"");
+                $cleanPath = ltrim($cleanPath, '/');
+                
+                // Remove "storage/" prefix if present
+                $cleanPath = preg_replace('#^storage/#', '', $cleanPath);
+                
+                // Check if file exists as-is (most common case)
+                if (Storage::disk('public')->exists($cleanPath)) {
+                    return $cleanPath;
+                }
+                
+                // Build list of variations to try
+                $variations = [$cleanPath];
+                $filename = basename($cleanPath);
+                
+                // If path is just a filename (no directory), search recursively
+                if (strpos($cleanPath, '/') === false) {
+                    // Search in expenses/attachments recursively
+                    $foundInExpenses = $this->findFileRecursively('expenses/attachments', $filename);
+                    if ($foundInExpenses) {
+                        return $foundInExpenses;
+                    }
+                    
+                    // Search in gmail-receipts recursively
+                    $foundInGmail = $this->findFileRecursively('gmail-receipts', $filename);
+                    if ($foundInGmail) {
+                        return $foundInGmail;
+                    }
+                    
+                    // Try common directories
+                    $variations[] = 'expenses/attachments/' . $cleanPath;
+                    $variations[] = 'gmail-receipts/' . $cleanPath;
+                } else {
+                    // Path has directory structure
+                    $dirPath = dirname($cleanPath);
+                    
+                    // Try exact path
+                    $variations[] = $cleanPath;
+                    
+                    // Try with just filename in common directories
+                    $variations[] = 'expenses/attachments/' . $filename;
+                    $variations[] = 'gmail-receipts/' . $filename;
+                    
+                    // If path doesn't start with expenses/ or gmail-receipts/, try adding them
+                    if (!str_starts_with($cleanPath, 'expenses/') && !str_starts_with($cleanPath, 'gmail-receipts/')) {
+                        $variations[] = 'expenses/attachments/' . $cleanPath;
+                        $variations[] = 'gmail-receipts/' . $cleanPath;
+                    }
+                    
+                    // If path starts with expenses/attachments/ but file not found, try searching by filename
+                    if (str_starts_with($cleanPath, 'expenses/attachments/')) {
+                        $foundInExpenses = $this->findFileRecursively('expenses/attachments', $filename);
+                        if ($foundInExpenses) {
+                            return $foundInExpenses;
+                        }
+                    }
+                    
+                    // If path starts with gmail-receipts/ but file not found, try searching by filename
+                    if (str_starts_with($cleanPath, 'gmail-receipts/')) {
+                        $foundInGmail = $this->findFileRecursively('gmail-receipts', $filename);
+                        if ($foundInGmail) {
+                            return $foundInGmail;
+                        }
+                    }
+                }
+                
+                // Remove duplicates and try each variation
+                $variations = array_unique($variations);
+                
+                foreach ($variations as $variation) {
+                    if (Storage::disk('public')->exists($variation)) {
+                        return $variation;
+                    }
+                }
+                
+                // Last resort: search recursively by filename in both directories
+                $foundInExpenses = $this->findFileRecursively('expenses/attachments', $filename);
+                if ($foundInExpenses) {
+                    return $foundInExpenses;
+                }
+                
+                $foundInGmail = $this->findFileRecursively('gmail-receipts', $filename);
+                if ($foundInGmail) {
+                    return $foundInGmail;
+                }
+                
+                // If not found, return the original cleaned path anyway
+                // The URL will be generated and user can try to access it
+                return $cleanPath;
+            })
+            ->filter() // Remove any null/empty values
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+    protected function findFileRecursively(string $directory, string $filename): ?string
+    {
+        try {
+            // Check if directory exists
+            if (!Storage::disk('public')->exists($directory)) {
+                return null;
+            }
+            
+            // Get all files recursively in the directory
+            $files = Storage::disk('public')->allFiles($directory);
+            
+            // Find file matching the filename
+            foreach ($files as $file) {
+                if (basename($file) === $filename) {
+                    return $file;
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error searching for file recursively', [
+                'directory' => $directory,
+                'filename' => $filename,
+                'error' => $e->getMessage(),
+            ]);
+        }
+        
+        return null;
     }
 
     protected function getPrimaryAttachmentPath($attachment): ?string
@@ -409,5 +717,18 @@ class ManageProjectExpenses extends ManageRelatedRecords
         return collect($paths)
             ->filter()
             ->first();
+    }
+
+    protected function getAttachmentActionLabel(Expense $record): string
+    {
+        $count = count($this->getAllAttachmentPaths($record));
+        
+        if ($count === 0) {
+            return 'Ver adjunto';
+        } elseif ($count === 1) {
+            return 'Ver adjunto';
+        } else {
+            return "Ver adjuntos ({$count})";
+        }
     }
 }
