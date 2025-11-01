@@ -14,11 +14,11 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'admin@admin.com'], // match condition
             [
                 'name' => 'Admin',
-                'password' => Hash::make('123'), // ⚠️ change to a secure password
+                'password' => '12345', // Will be hashed automatically by the model cast
             ]
         );
     }

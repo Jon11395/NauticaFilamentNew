@@ -129,11 +129,20 @@ class ProviderResource extends Resource
             ->description('Lista de proveedores')
             ->columns([
                 Split::make([
-                    Tables\Columns\TextColumn::make('name')
-                        ->label('Nombre')
-                        ->searchable()
-                        ->sortable()
-                        ->weight(FontWeight::Bold),
+                    Stack::make([
+                        Tables\Columns\TextColumn::make('name')
+                            ->label('Nombre')
+                            ->searchable()
+                            ->sortable()
+                            ->weight(FontWeight::Bold),
+                        Tables\Columns\TextColumn::make('identification')
+                            ->label('Identificación')
+                            ->searchable()
+                            ->sortable()
+                            ->copyable()
+                            ->icon('heroicon-m-identification')
+                            ->placeholder('Sin identificación'),
+                    ]),
                     Stack::make([
                         PhoneColumn::make('phone')
                             ->label('Teléfono')

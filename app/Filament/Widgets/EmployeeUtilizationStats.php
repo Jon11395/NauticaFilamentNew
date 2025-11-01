@@ -28,7 +28,9 @@ class EmployeeUtilizationStats extends BaseWidget
             ->get()
             ->map(function ($project) {
                 $totalIncome = $project->incomes->sum('total_deposited');
-                $totalExpenses = $project->expenses->sum('amount');
+                $totalExpenses = $project->expenses()
+                    ->where('document_type', '!=', 'nota_credito')
+                    ->sum('amount');
                 $profit = $totalIncome - $totalExpenses;
                 $profitMargin = $totalIncome > 0 ? ($profit / $totalIncome) * 100 : 0;
                 

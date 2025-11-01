@@ -17,8 +17,12 @@ class XmlReceiptParser
 
         $document = $this->loadXml($payload);
 
+        // Detect receipt type by checking the root element
+        $receiptType = $this->detectReceiptType($document);
+
+        $clave = $this->firstValue($document, 'Clave');
         $voucher = $this->firstValue($document, 'NumeroConsecutivo')
-            ?? $this->firstValue($document, 'Clave');
+            ?? $clave;
 
         $issueDate = $this->firstValue($document, 'FechaEmision');
         $providerName = $this->firstValue($document, 'Emisor/Nombre');
@@ -42,7 +46,15 @@ class XmlReceiptParser
 
         $concepts = $this->collectConcepts($document);
 
+        // Collect reference information if this is a credit note
+        $referenceInfo = null;
+        if ($receiptType === 'nota_credito') {
+            $referenceInfo = $this->collectReferenceInfo($document);
+        }
+
         return [
+            'receipt_type' => $receiptType,
+            'clave' => $clave,
             'voucher' => $voucher,
             'issue_date' => $issueDate,
             'provider_name' => $providerName,
@@ -58,6 +70,7 @@ class XmlReceiptParser
             'currency' => $currency,
             'sale_condition' => $saleCondition,
             'concepts' => $concepts,
+            'reference_info' => $referenceInfo,
             'raw_xml' => $payload,
         ];
     }
@@ -188,6 +201,69 @@ class XmlReceiptParser
             ->filter()
             ->values()
             ->all();
+    }
+
+    protected function detectReceiptType(\SimpleXMLElement $document): string
+    {
+        // First, try to get TipoDocumento from Hacienda Costa Rica XML
+        $tipoDocumento = $this->firstValue($document, 'TipoDocumento');
+
+        if ($tipoDocumento !== null) {
+            // Hacienda Costa Rica document type codes:
+            // 01 = Factura Electrónica
+            // 02 = Nota de Débito Electrónica
+            // 03 = Nota de Crédito Electrónica
+            // 04 = Tiquete Electrónico
+            return match ($tipoDocumento) {
+                '01' => 'factura',
+                '02' => 'nota_debito',
+                '03' => 'nota_credito',
+                '04' => 'tiquete',
+                default => 'unknown',
+            };
+        }
+
+        // Fallback: Check the root element local name for backwards compatibility
+        $rootName = strtolower($document->getName());
+
+        if ($rootName === 'notacreditoelectronica') {
+            return 'nota_credito';
+        }
+
+        if ($rootName === 'facturaelectronica') {
+            return 'factura';
+        }
+
+        if ($rootName === 'tiqueteelectronico') {
+            return 'tiquete';
+        }
+
+        if ($rootName === 'notadebitoelectronica') {
+            return 'nota_debito';
+        }
+
+        // Default to unknown
+        return 'unknown';
+    }
+
+    protected function collectReferenceInfo(\SimpleXMLElement $document): ?array
+    {
+        // For Nota de Credito, collect reference information
+        $numeroRef = $this->firstValue($document, 'InformacionReferencia/Numero');
+        $fechaEmisionRef = $this->firstValue($document, 'InformacionReferencia/FechaEmisionIR');
+        $codigoRef = $this->firstValue($document, 'InformacionReferencia/Codigo');
+        $razonRef = $this->firstValue($document, 'InformacionReferencia/Razon');
+
+        if (!$numeroRef && !$fechaEmisionRef) {
+            return null;
+        }
+
+        return [
+            'numero' => $numeroRef,
+            'fecha_emision' => $fechaEmisionRef,
+            'codigo' => $codigoRef,
+            'razon' => $razonRef,
+        ];
     }
 }
 

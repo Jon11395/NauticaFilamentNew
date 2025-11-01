@@ -29,8 +29,14 @@ class ProjectExpenseTotalOverview extends BaseWidget
     protected function getStats(): array
     {
 
-        $totalExpenses = Expense::where('project_id', $this->record->id)->where('type', 'paid')->sum('amount');
-        $numberofexpenses = Expense::where('project_id', $this->record->id)->where('type', 'paid')->count();
+        $totalExpenses = Expense::where('project_id', $this->record->id)
+            ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
+            ->sum('amount');
+        $numberofexpenses = Expense::where('project_id', $this->record->id)
+            ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
+            ->count();
 
 
         $totalSpreadsheetPaid = DB::table('payments')

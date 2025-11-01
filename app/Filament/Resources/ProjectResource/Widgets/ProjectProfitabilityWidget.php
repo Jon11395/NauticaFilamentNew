@@ -34,9 +34,10 @@ class ProjectProfitabilityWidget extends BaseWidget
         // Calculate total income
         $totalIncome = Income::where('project_id', $this->record->id)->sum('total_deposited');
 
-        // Calculate total expenses
+        // Calculate total expenses (excluding credit notes)
         $totalExpensesPaid = Expense::where('project_id', $this->record->id)
             ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
             ->sum('amount');
 
         $totalContractExpenses = DB::table('contract_expenses')
@@ -71,10 +72,11 @@ class ProjectProfitabilityWidget extends BaseWidget
             })
             ->toArray();
 
-        // Get monthly expenses
+        // Get monthly expenses (excluding credit notes)
         $monthlyExpenses = Expense::where('project_id', $this->record->id)
             ->whereBetween('date', [$startDate, $endDate])
             ->where('type', 'paid')
+            ->where('document_type', '!=', 'nota_credito')
             ->select(DB::raw('SUM(amount) as total'), DB::raw('MONTH(date) as month'), DB::raw('YEAR(date) as year'))
             ->groupBy(DB::raw('YEAR(date)'), DB::raw('MONTH(date)'))
             ->get()

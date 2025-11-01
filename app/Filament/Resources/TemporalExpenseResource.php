@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\ExpenseType;
 use App\Models\Project;
 use App\Models\Provider;
+use App\Services\Receipts\XmlReceiptParser;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -22,6 +23,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Filament\Notifications\Notification;
 
 class TemporalExpenseResource extends Resource
 {
@@ -153,6 +156,30 @@ class TemporalExpenseResource extends Resource
                             ->limit(80)
                             ->tooltip(fn (Model $record) => self::formatConceptTooltip($record->concept))
                             ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-300']),
+                        Tables\Columns\TextColumn::make('related_invoice')
+                            ->label('Factura relacionada')
+                            ->state(function (?Expense $record) {
+                                if (!$record || $record->document_type !== 'nota_credito') {
+                                    return null;
+                                }
+                                
+                                $info = self::getRelatedInvoiceInfo($record);
+                                if (!$info) {
+                                    return null;
+                                }
+                                
+                                $text = 'Ref: ' . $info['voucher'];
+                                $projectText = $info['project'] ?? 'Sin proyecto';
+                                $text .= '<br/><strong><small>' . htmlspecialchars($projectText, ENT_QUOTES, 'UTF-8') . '</small></strong>';
+                                return new HtmlString($text);
+                            })
+                            ->badge()
+                            ->color('info')
+                            ->icon('heroicon-o-document-text')
+                            ->visible(fn (?Expense $record): bool => 
+                                $record !== null && $record->document_type === 'nota_credito'
+                            ),
+                        
                     ])->space(1)->grow(true),
                     Tables\Columns\Layout\Stack::make([
                         Tables\Columns\TextColumn::make('amount')
@@ -161,6 +188,25 @@ class TemporalExpenseResource extends Resource
                             ->weight('bold')
                             ->alignEnd()
                             ->sortable(),
+                        Tables\Columns\TextColumn::make('document_type')
+                            ->label('Tipo de documento')
+                            ->badge()
+                            ->alignEnd()
+                            ->color(fn (?string $state): string => match ($state) {
+                                'factura' => 'primary',
+                                'nota_credito' => 'danger',
+                                'nota_debito' => 'warning',
+                                'tiquete' => 'info',
+                                default => 'gray',
+                            })
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'factura' => 'Factura',
+                                'nota_credito' => 'Nota de Crédito',
+                                'nota_debito' => 'Nota de Débito',
+                                'tiquete' => 'Tiquete',
+                                null => 'Sin tipo',
+                                default => ucfirst($state ?? 'Desconocido'),
+                            }),
                         Tables\Columns\TextColumn::make('type')
                             ->label('Tipo')
                             ->badge()
@@ -179,6 +225,14 @@ class TemporalExpenseResource extends Resource
                 ])->from('md'),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('document_type')
+                    ->label('Tipo de documento')
+                    ->options([
+                        'factura' => 'Factura',
+                        'nota_credito' => 'Nota de Crédito',
+                        'nota_debito' => 'Nota de Débito',
+                        'tiquete' => 'Tiquete',
+                    ]),
                 Tables\Filters\SelectFilter::make('project')
                     ->relationship('project', 'name')
                     ->label('Proyecto'),
@@ -195,6 +249,158 @@ class TemporalExpenseResource extends Resource
                     ->openUrlInNewTab()
                     ->visible(fn (Expense $record) => self::primaryAttachmentExists($record)),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('aplicar_al_gasto')
+                    ->label('Aplicar al gasto')
+                    ->icon('heroicon-o-minus-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Aplicar nota de crédito al gasto')
+                    ->modalDescription(fn (Expense $record): string => 
+                        'Esta nota de crédito se aplicará al gasto relacionado. El monto del gasto se reducirá en ' . 
+                        '₡' . number_format((float) $record->amount, 2, '.', ',') . '.'
+                    )
+                    ->action(function (Expense $creditNote, Tables\Actions\Action $action): void {
+                        try {
+                            if (!$creditNote->clave) {
+                                throw new \Exception('La nota de crédito no tiene una clave de referencia válida.');
+                            }
+
+                            // Find the related expense by clave (which contains the original invoice's clave)
+                            $relatedExpense = Expense::query()
+                                ->where('provider_id', $creditNote->provider_id)
+                                ->where('clave', $creditNote->clave)
+                                ->where('id', '!=', $creditNote->id)
+                                ->where('document_type', '!=', 'nota_credito') // Don't match other credit notes
+                                ->first();
+
+                            if (!$relatedExpense) {
+                                throw new \Exception(
+                                    "No se encontró un gasto relacionado con la clave: {$creditNote->clave}. " .
+                                    "Verifique que el gasto original exista y tenga el mismo proveedor."
+                                );
+                            }
+
+                            Log::info('Applying credit note to expense', [
+                                'credit_note_id' => $creditNote->id,
+                                'related_expense_id' => $relatedExpense->id,
+                                'clave' => $creditNote->clave,
+                            ]);
+
+                            // Calculate new amount (original - credit)
+                            $originalAmount = (float) $relatedExpense->amount;
+                            $creditAmount = (float) $creditNote->amount;
+                            $newAmount = $originalAmount - $creditAmount;
+
+                            // Get credit reason from XML if available
+                            $creditReason = self::extractCreditReason($creditNote);
+
+                            // Build updated concept
+                            $oldConcept = $relatedExpense->concept ?? '';
+                            $updatedConcept = $oldConcept . '<br/><small style="color:#dc3545;">[NOTA DE CRÉDITO: ' . 
+                                htmlspecialchars($creditReason, ENT_QUOTES, 'UTF-8') . 
+                                ' por ₡' . number_format($creditAmount, 2, '.', ',') . 
+                                ' - Comprobante: ' . htmlspecialchars($creditNote->voucher, ENT_QUOTES, 'UTF-8') . ']</small>';
+
+                            // Handle attachments - merge credit note attachments with original expense
+                            $currentAttachment = $relatedExpense->attachment;
+                            
+                            // Normalize current attachment to array
+                            $currentAttachments = [];
+                            if (is_array($currentAttachment)) {
+                                $currentAttachments = $currentAttachment;
+                            } else if (is_string($currentAttachment) && !empty($currentAttachment)) {
+                                // Try to decode if it's JSON
+                                $decoded = json_decode($currentAttachment, true);
+                                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                    $currentAttachments = $decoded;
+                                } else {
+                                    $currentAttachments = [$currentAttachment];
+                                }
+                            }
+                            
+                            // Normalize credit note attachments to array
+                            $creditAttachments = [];
+                            if ($creditNote->attachment) {
+                                if (is_array($creditNote->attachment)) {
+                                    $creditAttachments = $creditNote->attachment;
+                                } else if (is_string($creditNote->attachment)) {
+                                    $decoded = json_decode($creditNote->attachment, true);
+                                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                        $creditAttachments = $decoded;
+                                    } else {
+                                        $creditAttachments = [$creditNote->attachment];
+                                    }
+                                }
+                            }
+                            
+                            // Merge both arrays, ensuring no duplicates
+                            $allAttachments = array_merge($currentAttachments, $creditAttachments);
+                            $attachmentPayload = array_values(array_unique($allAttachments));
+                            
+                            Log::info('Merging attachments', [
+                                'related_expense_id' => $relatedExpense->id,
+                                'current_attachments_count' => count($currentAttachments),
+                                'credit_attachments_count' => count($creditAttachments),
+                                'final_attachments_count' => count($attachmentPayload),
+                                'current_attachments' => $currentAttachments,
+                                'credit_attachments' => $creditAttachments,
+                                'final_attachments' => $attachmentPayload,
+                            ]);
+
+                            // Update the related expense
+                            $relatedExpense->amount = $newAmount >= 0 ? number_format($newAmount, 4, '.', '') : '0.0000';
+                            $relatedExpense->concept = $updatedConcept;
+                            $relatedExpense->attachment = $attachmentPayload;
+                            $relatedExpense->save();
+
+                            Log::info('Updated related expense', [
+                                'expense_id' => $relatedExpense->id,
+                                'original_amount' => $originalAmount,
+                                'credit_amount' => $creditAmount,
+                                'new_amount' => $newAmount,
+                            ]);
+
+                            // Mark the credit note as non-temporal and assign it to the same project
+                            $creditNote->temporal = false;
+                            $creditNote->project_id = $relatedExpense->project_id;
+                            $creditNote->save();
+
+                            Log::info('Marked credit note as non-temporal', [
+                                'credit_note_id' => $creditNote->id,
+                                'project_id' => $relatedExpense->project_id,
+                            ]);
+
+                            Notification::make()
+                                ->title('Nota de crédito aplicada correctamente')
+                                ->body(
+                                    'El gasto ' . $relatedExpense->voucher . ' fue ajustado de ₡' . 
+                                    number_format($originalAmount, 2, '.', ',') . 
+                                    ' a ₡' . number_format(max(0, $newAmount), 2, '.', ',') . '.'
+                                )
+                                ->success()
+                                ->send();
+                            
+                            $action->getLivewire()->dispatch('temporal-expenses-updated');
+                            
+                            // Refresh the page to update navigation badge
+                            $action->getLivewire()->redirect(static::getUrl('index'));
+                        } catch (\Throwable $e) {
+                            Log::error('Error applying credit note to expense', [
+                                'credit_note_id' => $creditNote->id,
+                                'error' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString(),
+                            ]);
+                            
+                            Notification::make()
+                                ->title('Error al aplicar nota de crédito')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    })
+                    ->visible(fn (Expense $record): bool => 
+                        $record->temporal && $record->document_type === 'nota_credito'
+                    ),
                 Tables\Actions\Action::make('assign')
                     ->label('Asignar a proyecto')
                     ->icon('heroicon-o-paper-airplane')
@@ -226,11 +432,16 @@ class TemporalExpenseResource extends Resource
                         ]);
 
                         $action->getLivewire()->dispatch('temporal-expenses-updated');
+                        
+                        // Refresh the page to update navigation badge
+                        $action->getLivewire()->redirect(static::getUrl('index'));
                     })
                     ->color('success')
                     ->requiresConfirmation()
                     ->successNotificationTitle('Gasto asignado correctamente')
-                    ->visible(fn (Expense $record): bool => $record->temporal),
+                    ->visible(fn (Expense $record): bool => 
+                        $record->temporal && $record->document_type !== 'nota_credito'
+                    ),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -259,19 +470,65 @@ class TemporalExpenseResource extends Resource
                                 ->required(),
                         ])
                         ->action(function (Collection $records, array $data, Tables\Actions\BulkAction $action): void {
-                            $records->each(function (Expense $expense) use ($data): void {
+                            // Count credit notes before filtering
+                            $creditNotesCount = $records->filter(fn (Expense $expense) => 
+                                $expense->document_type === 'nota_credito'
+                            )->count();
+                            
+                            // Filter out credit notes from the records
+                            $regularExpenses = $records->filter(function (Expense $expense) {
+                                return $expense->document_type !== 'nota_credito';
+                            });
+                            
+                            $assignedCount = 0;
+                            $regularExpenses->each(function (Expense $expense) use ($data, &$assignedCount): void {
                                 $expense->update([
                                     'project_id' => $data['project_id'],
                                     'expense_type_id' => $data['expense_type_id'],
                                     'temporal' => false,
                                 ]);
+                                $assignedCount++;
                             });
 
+                            // Show notification about credit notes being ignored
+                            if ($creditNotesCount > 0) {
+                                Notification::make()
+                                    ->title('Notas de crédito ignoradas')
+                                    ->body("{$creditNotesCount} nota(s) de crédito fueron ignoradas. Deben aplicarse manualmente usando la acción 'Aplicar al gasto'.")
+                                    ->warning()
+                                    ->send();
+                            }
+                            
+                            // Show success notification for assigned expenses
+                            if ($assignedCount > 0) {
+                                Notification::make()
+                                    ->title('Gastos asignados correctamente')
+                                    ->body("Se asignaron {$assignedCount} gasto(s) al proyecto.")
+                                    ->success()
+                                    ->send();
+                            }
+
                             $action->getLivewire()->dispatch('temporal-expenses-updated');
+                            
+                            // Refresh the page to update navigation badge
+                            $action->getLivewire()->redirect(static::getUrl('index'));
                         })
                         ->deselectRecordsAfterCompletion()
                         ->requiresConfirmation()
-                        ->successNotificationTitle('Gastos asignados correctamente')
+                        ->modalHeading('Asignar gastos a proyecto')
+                        ->modalDescription(function (Collection $records) {
+                            $creditNotesCount = $records->filter(fn (Expense $expense) => 
+                                $expense->document_type === 'nota_credito'
+                            )->count();
+                            
+                            $regularCount = $records->count() - $creditNotesCount;
+                            
+                            if ($creditNotesCount > 0) {
+                                return "Se asignarán {$regularCount} gastos. {$creditNotesCount} nota(s) de crédito serán ignoradas (deben aplicarse manualmente).";
+                            }
+                            
+                            return "Se asignarán {$regularCount} gasto(s) al proyecto seleccionado.";
+                        })
                 ]),
             ]);
     }
@@ -295,6 +552,7 @@ class TemporalExpenseResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
+        // Include all temporal expenses (both regular expenses and credit notes)
         $count = static::getModel()::query()
             ->where('temporal', true)
             ->whereNull('project_id')
@@ -386,4 +644,83 @@ class TemporalExpenseResource extends Resource
             ->filter()
             ->first();
     }
+
+    protected static function extractCreditReason(Expense $creditNote): string
+    {
+        try {
+            // Find XML attachment
+            $xmlPath = self::findXmlAttachment($creditNote);
+            
+            if (!$xmlPath || !Storage::disk('public')->exists($xmlPath)) {
+                return 'Nota de crédito aplicada';
+            }
+
+            $xmlContent = Storage::disk('public')->get($xmlPath);
+            
+            if (empty($xmlContent)) {
+                return 'Nota de crédito aplicada';
+            }
+
+            // Parse XML to get credit reason
+            $parser = app(XmlReceiptParser::class);
+            $parsed = $parser->parse($xmlContent);
+
+            return $parsed['reference_info']['razon'] ?? 'Nota de crédito aplicada';
+        } catch (\Throwable $e) {
+            Log::warning('Could not extract credit reason from credit note', [
+                'expense_id' => $creditNote->id,
+                'error' => $e->getMessage(),
+            ]);
+            return 'Nota de crédito aplicada';
+        }
+    }
+
+    protected static function findXmlAttachment(Expense $expense): ?string
+    {
+        $attachments = self::normalizeAttachments($expense->attachment);
+        
+        foreach ($attachments as $path) {
+            if (str_ends_with(strtolower($path), '.xml')) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    protected static function getRelatedInvoiceInfo(Expense $creditNote): ?array
+    {
+        if (!$creditNote->clave || !$creditNote->provider_id) {
+            return null;
+        }
+
+        try {
+            // Find the related invoice by clave (which contains the original invoice's clave)
+            // Search both temporal and assigned expenses
+            $relatedExpense = Expense::query()
+                ->with('project')
+                ->where('provider_id', $creditNote->provider_id)
+                ->where('clave', $creditNote->clave)
+                ->where('id', '!=', $creditNote->id)
+                ->where('document_type', '!=', 'nota_credito') // Don't match other credit notes
+                ->orderBy('created_at', 'desc') // Get the most recent one if multiple exist
+                ->first();
+
+            if (!$relatedExpense) {
+                return null;
+            }
+
+            return [
+                'voucher' => $relatedExpense->voucher,
+                'project' => $relatedExpense->project?->name,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Could not find related invoice for credit note', [
+                'credit_note_id' => $creditNote->id,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
 }
