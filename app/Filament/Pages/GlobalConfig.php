@@ -227,8 +227,9 @@ class GlobalConfig extends Page implements HasForms, HasActions
                 continue;
             }
 
-            // Skip if value is null or empty and not explicitly set
+            // If value is null or empty, delete the configuration
             if ($value === null || $value === '') {
+                GlobalConfigModel::where('key', $key)->delete();
                 continue;
             }
 
