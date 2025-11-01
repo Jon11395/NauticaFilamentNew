@@ -5,6 +5,7 @@ namespace App\Console;
 use App\Models\GlobalConfig;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\Cache;
 
 class Kernel extends ConsoleKernel
 {
@@ -13,6 +14,14 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        $schedule->command('health:schedule-check-heartbeat')
+            ->everyMinute()
+            ->name('health:schedule-heartbeat');
+
+        $schedule->command('health:queue-check-heartbeat')
+            ->everyMinute()
+            ->name('health:queue-heartbeat');
+
         $interval = (int) GlobalConfig::getValue('gmail_sync_interval_minutes', 60);
 
         if ($interval < 60) {
@@ -47,6 +56,9 @@ class Kernel extends ConsoleKernel
                     && filled(GlobalConfig::getValue('gmail_client_secret'))
                     && filled(GlobalConfig::getValue('gmail_refresh_token'))
                     && filled(GlobalConfig::getValue('gmail_user_email'));
+            })
+            ->after(function () {
+                Cache::store(config('cache.default'))->put('health:schedule:gmail-import', now()->timestamp);
             });
     }
 

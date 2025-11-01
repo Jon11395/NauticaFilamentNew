@@ -21,6 +21,8 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Rmsramos\Activitylog\ActivitylogPlugin;
 use App\Filament\Pages\Dashboard;
 use Joaopaulolndev\FilamentGeneralSettings\FilamentGeneralSettingsPlugin;
+use ShuvroRoy\FilamentSpatieLaravelHealth\FilamentSpatieLaravelHealthPlugin;
+use App\Filament\Pages\HealthCheckResults;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -86,9 +88,11 @@ class AdminPanelProvider extends PanelProvider
                     ->setNavigationGroup('Configuraciones')
                     ->setTitle('Configuraciones Generales')
                     ->setNavigationLabel('General'),
+                FilamentSpatieLaravelHealthPlugin::make()
+                    ->usingPage(HealthCheckResults::class),
                 ])
             ->sidebarCollapsibleOnDesktop()
-            ->sidebarWidth('17rem')
+            ->sidebarWidth('16rem')
             ->databaseNotifications();
     }
 }

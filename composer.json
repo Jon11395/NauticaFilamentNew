@@ -28,6 +28,10 @@
         "pelmered/filament-money-field": "^1.4",
         "pusher/pusher-php-server": "^7.2",
         "rmsramos/activitylog": "^1.0",
+        "shuvroroy/filament-spatie-laravel-health": "^2.3",
+        "spatie/cpu-load-health-check": "^1.0",
+        "spatie/laravel-backup": "^9.3",
+        "spatie/security-advisories-health-check": "^1.3",
         "ysfkaya/filament-phone-input": "^3.0"
     },
     "require-dev": {
