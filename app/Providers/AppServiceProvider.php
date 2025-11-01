@@ -58,24 +58,26 @@ class AppServiceProvider extends ServiceProvider
 
    
 
-        $gmailIntervalMinutes = (int) GlobalConfig::getValue('gmail_sync_interval_minutes', 60);
-        $gmailHeartbeatMaxAge = max((int) ceil($gmailIntervalMinutes * 1.5), $gmailIntervalMinutes + 5, 10);
+        if (app()->bound('health')) {
+            $gmailIntervalMinutes = (int) GlobalConfig::getValue('gmail_sync_interval_minutes', 60);
+            $gmailHeartbeatMaxAge = max((int) ceil($gmailIntervalMinutes * 1.5), $gmailIntervalMinutes + 5, 10);
 
-        Health::checks([
-            DatabaseCheck::new()->connectionName(config('database.default')),
-            DatabaseSizeCheck::new()->failWhenSizeAboveGb(8),
-            CpuLoadCheck::new()
-                ->failWhenLoadIsHigherInTheLastMinute(12.0)
-                ->failWhenLoadIsHigherInTheLast5Minutes(10.0)
-                ->failWhenLoadIsHigherInTheLast15Minutes(8.0),
-            UsedDiskSpaceCheck::new()
-                ->warnWhenUsedSpaceIsAbovePercentage(75)
-                ->failWhenUsedSpaceIsAbovePercentage(90),
-            ScheduleCheck::new()
-                ->name('Gmail Import Schedule')
-                ->cacheKey('health:schedule:gmail-import')
-                ->heartbeatMaxAgeInMinutes($gmailHeartbeatMaxAge),
-        ]);
+            Health::checks([
+                DatabaseCheck::new()->connectionName(config('database.default')),
+                DatabaseSizeCheck::new()->failWhenSizeAboveGb(8),
+                CpuLoadCheck::new()
+                    ->failWhenLoadIsHigherInTheLastMinute(12.0)
+                    ->failWhenLoadIsHigherInTheLast5Minutes(10.0)
+                    ->failWhenLoadIsHigherInTheLast15Minutes(8.0),
+                UsedDiskSpaceCheck::new()
+                    ->warnWhenUsedSpaceIsAbovePercentage(75)
+                    ->failWhenUsedSpaceIsAbovePercentage(90),
+                ScheduleCheck::new()
+                    ->name('Gmail Import Schedule')
+                    ->cacheKey('health:schedule:gmail-import')
+                    ->heartbeatMaxAgeInMinutes($gmailHeartbeatMaxAge),
+            ]);
+        }
         
     }
 }
