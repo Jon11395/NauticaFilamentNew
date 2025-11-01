@@ -126,13 +126,17 @@ class GlobalConfig extends Page implements HasForms, HasActions
                                             ->label('Sincronización automática')
                                             ->options([
                                                 0 => 'Desactivado',
-                                                5 => 'Cada 5 minutos',
-                                                10 => 'Cada 10 minutos',
-                                                15 => 'Cada 15 minutos',
-                                                30 => 'Cada 30 minutos',
                                                 60 => 'Cada hora',
+                                                120 => 'Cada 2 horas',
+                                                180 => 'Cada 3 horas',
+                                                240 => 'Cada 4 horas',
+                                                360 => 'Cada 6 horas',
+                                                720 => 'Cada 12 horas',
+                                                1440 => 'Cada día',
+                                                2880 => 'Cada 2 días',
+                                                10080 => 'Cada semana',
                                             ])
-                                            ->helperText('Frecuencia con la que se ejecutará automáticamente la sincronización de Gmail')
+                                            ->helperText('Frecuencia con la que se ejecutará automáticamente la sincronización de Gmail (mínimo cada hora)')
                                             ->default(0)
                                             ->columnSpan(1),
 
