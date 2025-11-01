@@ -47,8 +47,11 @@ Para activar un cron schedule
 
 2. Get the public path to enter later with this commands:
 
-   ```bash
+    ```bash
    cd ~/public_html
+   ```
+
+   ```bash
    pwd
    ```
 
