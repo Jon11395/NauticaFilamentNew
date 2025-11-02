@@ -23,7 +23,10 @@ class ExpenseCategoryBreakdown extends ChartWidget
 
         // Get expenses grouped by category for the selected period (excluding credit notes)
         $expensesByCategory = Expense::whereBetween('date', [$dateRange['start'], $dateRange['end']])
-            ->where('document_type', '!=', 'nota_credito')
+            ->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })
             ->join('expense_types', 'expenses.expense_type_id', '=', 'expense_types.id')
             ->select(
                 'expense_types.name as category_name',

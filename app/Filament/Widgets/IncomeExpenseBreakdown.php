@@ -22,11 +22,17 @@ class IncomeExpenseBreakdown extends ChartWidget
 
         $totalIncomeDeposited = Income::whereBetween('date', [$dateRange['start'], $dateRange['end']])->sum('total_deposited');
         $totalExpensesPaid = Expense::where('type', 'paid')
-            ->where('document_type', '!=', 'nota_credito')
+            ->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })
             ->whereBetween('date', [$dateRange['start'], $dateRange['end']])
             ->sum('amount');
         $totalExpensesUnpaid = Expense::where('type', 'unpaid')
-            ->where('document_type', '!=', 'nota_credito')
+            ->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })
             ->whereBetween('date', [$dateRange['start'], $dateRange['end']])
             ->sum('amount');
 
