@@ -53,7 +53,10 @@ class MonthlyTrendChart extends ChartWidget
             ->toArray();
         */
         $expenseCounts = Expense::whereBetween('date', [$startDate, $endDate])
-            ->where('document_type', '!=', 'nota_credito')
+            ->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })
             ->select(
                 DB::raw('SUM(amount) as count'),
                 DB::raw('MONTH(date) as month'),

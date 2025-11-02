@@ -25,6 +25,10 @@ class TemporalExpensesSummary extends BaseWidget
 
         $pendingTemporalExpenses = Expense::query()
             ->where('temporal', true)
+            ->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })
             ->get(['created_at']);
 
         $pendingTemporalCount = $pendingTemporalExpenses->count();
@@ -46,6 +50,10 @@ class TemporalExpensesSummary extends BaseWidget
         $assignedTemporalThisMonth = Expense::query()
             ->where('temporal', false)
             ->whereNotNull('project_id')
+            ->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })
             ->whereBetween('updated_at', [$startOfMonth, $endOfMonth])
             ->count();
 

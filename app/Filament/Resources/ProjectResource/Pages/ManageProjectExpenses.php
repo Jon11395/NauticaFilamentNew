@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ProjectResource\Pages;
 
 use App\Filament\Resources\ProjectResource;
 use App\Models\Expense;
+use App\Models\Project;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -64,26 +65,44 @@ class ManageProjectExpenses extends ManageRelatedRecords
         $tabs = [];
 
         $tabs[] = Tab::make('Todas') 
-            ->badge(Expense::where('project_id', $this->record->id)->where('document_type', '!=', 'nota_credito')->count())
+            ->badge(Expense::where('project_id', $this->record->id)->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })->count())
             ->icon('heroicon-s-arrow-right-circle')
             ->badgeColor('info')
             ->modifyQueryUsing(function ($query) {
-                return $query->where('document_type', '!=', 'nota_credito');
+                return $query->where(function ($q) {
+                    $q->where('document_type', '!=', 'nota_credito')
+                      ->orWhereNull('document_type');
+                });
             });
     
         $tabs[] = Tab::make('Pagas') 
-            ->badge(Expense::where('project_id', $this->record->id)->where('type', 'paid')->where('document_type', '!=', 'nota_credito')->count())
+            ->badge(Expense::where('project_id', $this->record->id)->where('type', 'paid')->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })->count())
             ->icon('heroicon-s-arrow-trending-up') 
             ->badgeColor('success')
             ->modifyQueryUsing(function ($query) {
-                return $query->where('type', 'paid')->where('document_type', '!=', 'nota_credito');
+                return $query->where('type', 'paid')->where(function ($q) {
+                    $q->where('document_type', '!=', 'nota_credito')
+                      ->orWhereNull('document_type');
+                });
             });
         $tabs[] = Tab::make('Por pagar') 
-            ->badge(Expense::where('project_id', $this->record->id)->where('type', 'unpaid')->where('document_type', '!=', 'nota_credito')->count())
+            ->badge(Expense::where('project_id', $this->record->id)->where('type', 'unpaid')->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            })->count())
             ->icon('heroicon-s-arrow-trending-down')
             ->badgeColor('warning')
             ->modifyQueryUsing(function ($query) {
-                return $query->where('type', 'unpaid')->where('document_type', '!=', 'nota_credito');
+                return $query->where('type', 'unpaid')->where(function ($q) {
+                    $q->where('document_type', '!=', 'nota_credito')
+                      ->orWhereNull('document_type');
+                });
             });
     
 
@@ -95,17 +114,135 @@ class ManageProjectExpenses extends ManageRelatedRecords
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Detalles del gasto')
+                Forms\Components\Section::make('Asignación')
+                    ->description('Asigna este gasto a un proyecto y proveedor')
                     ->schema([
                         Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('project_id')
+                                    ->label('Proyecto')
+                                    ->relationship(name: 'project', titleAttribute: 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->native(false),
+                                Forms\Components\Select::make('provider_id')
+                                    ->label('Proveedor')
+                                    ->relationship(name: 'provider', titleAttribute: 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->required()
+                                    ->native(false)
+                                    ->createOptionForm([
+                                        Forms\Components\Grid::make(2)
+                                            ->schema([
+                                        Forms\Components\TextInput::make('name')
+                                            ->required()
+                                                    ->maxLength(255)
+                                                    ->columnSpanFull(),
+                                        PhoneInput::make('phone')
+                                                    ->initialCountry('cr')
+                                                    ->columnSpan(1),
+                                        Forms\Components\TextInput::make('email')
+                                            ->required()
+                                            ->email()
+                                                    ->maxLength(255)
+                                                    ->columnSpan(1),
+                                        Forms\Components\Select::make('country_id')
+                                            ->label('País')
+                                            ->relationship(name: 'country', titleAttribute: 'name')
+                                            ->searchable()
+                                            ->preload()
+                                            ->live()
+                                            ->afterStateUpdated(function (Set $set) {
+                                                $set('state_id', null);
+                                                $set('city_id', null);
+                                            })
+                                                    ->required()
+                                                    ->columnSpan(1),
+                                        Forms\Components\Select::make('state_id')
+                                            ->options(fn (Get $get): Collection => State::query()
+                                                ->where('country_id', $get('country_id'))
+                                                ->pluck('name', 'id')
+                                            )
+                                            ->label('Estado o Provincia')
+                                            ->searchable()
+                                            ->preload()
+                                            ->live()
+                                            ->afterStateUpdated(function (Set $set) {
+                                                $set('city_id', null);
+                                            })
+                                                    ->required()
+                                                    ->columnSpan(1),
+                                        Forms\Components\Select::make('city_id')
+                                            ->options(fn (Get $get): Collection => City::query()
+                                                ->where('state_id', $get('state_id'))
+                                                ->pluck('name', 'id')
+                                            )
+                                            ->label('Ciudad')
+                                            ->searchable()
+                                            ->preload()
+                                                    ->required()
+                                                    ->columnSpan(1),
+                                            ]),
+                                    ]),
+                            ]),
+                    ])
+                    ->columns(1)
+                    ->collapsible()
+                    ->collapsed(false),
+                
+                Forms\Components\Section::make('Información del Gasto')
+                    ->description('Detalles principales del comprobante')
+                    ->schema([
+                        Forms\Components\Grid::make(3)
                             ->schema([
                                 Forms\Components\TextInput::make('voucher')
                                     ->label('Comprobante')
                                     ->required()
-                                    ->maxLength(50),
+                                    ->maxLength(50)
+                                    ->columnSpan(1),
                                 Forms\Components\DateTimePicker::make('date')
                                     ->label('Fecha')
-                                    ->required(),
+                                    ->required()
+                                    ->default(now())
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->columnSpan(1),
+                                Forms\Components\TextInput::make('amount')
+                                    ->label('Monto')
+                                    ->prefix('₡')
+                                    ->required()
+                                    ->numeric()
+                                    ->currencyMask(thousandSeparator: '.', decimalSeparator: ',', precision: 2)
+                                    ->columnSpan(1),
+                            ]),
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('type')
+                                    ->label('Estado')
+                                    ->required()
+                                    ->options([
+                                        'paid' => 'Pagado',
+                                        'unpaid' => 'No pagado',
+                                    ])
+                                    ->native(false)
+                                    ->columnSpan(1),
+                                Forms\Components\Select::make('expense_type_id')
+                                    ->label('Categoría de gasto')
+                                    ->relationship(name: 'expenseType', titleAttribute: 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->required()
+                                    ->native(false)
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Nombre')
+                                            ->required()
+                                            ->maxLength(255),
+                                    ])
+                                    ->columnSpan(1),
                             ]),
                         Forms\Components\RichEditor::make('concept')
                             ->label('Concepto')
@@ -122,115 +259,44 @@ class ManageProjectExpenses extends ManageRelatedRecords
                             ])
                             ->maxLength(5000)
                             ->extraAttributes([
-                                'style' => 'max-height: 240px; overflow: auto;',
+                                'style' => 'max-height: 200px; overflow: auto;',
                             ])
                             ->columnSpanFull(),
-                        Forms\Components\Grid::make(3)
-                            ->schema([
-                                Forms\Components\TextInput::make('amount')
-                                    ->label('Monto')
-                                    ->prefix('₡')
-                                    ->required()
-                                    ->numeric()
-                                    ->currencyMask(thousandSeparator: '.', decimalSeparator: ',', precision: 2),
-                                Forms\Components\Select::make('type')
-                                    ->label('Tipo')
-                                    ->required()
-                                    ->options([
-                                        'paid' => 'Pagado',
-                                        'unpaid' => 'No pagado',
-                                    ]),
-                                Forms\Components\Select::make('expense_type_id')
-                                    ->label('Tipo de gasto')
-                                    ->relationship(name: 'expenseType', titleAttribute: 'name')
-                                    ->searchable()
-                                    ->preload()
-                                    ->live()
-                                    ->required()
-                                    ->createOptionForm([
-                                        Forms\Components\TextInput::make('name')
-                                            ->label('Nombre')
-                                            ->required()
-                                            ->maxLength(255),
-                                    ]),
-                            ]),
                     ])
-                    ->columns(1),
-                Forms\Components\Section::make('Proveedor')
-                    ->schema([
-                        Forms\Components\Select::make('provider_id')
-                            ->label('Proveedor')
-                            ->relationship(name: 'provider', titleAttribute: 'name')
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->required()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
-                                    ->required()
-                                    ->maxLength(255),
-                                PhoneInput::make('phone')
-                                    ->initialCountry('cr'),
-                                Forms\Components\TextInput::make('email')
-                                    ->required()
-                                    ->email()
-                                    ->maxLength(255),
-                                Forms\Components\Select::make('country_id')
-                                    ->label('País')
-                                    ->relationship(name: 'country', titleAttribute: 'name')
-                                    ->searchable()
-                                    ->preload()
-                                    ->live()
-                                    ->afterStateUpdated(function (Set $set) {
-                                        $set('state_id', null);
-                                        $set('city_id', null);
-                                    })
-                                    ->required(),
-                                Forms\Components\Select::make('state_id')
-                                    ->options(fn (Get $get): Collection => State::query()
-                                        ->where('country_id', $get('country_id'))
-                                        ->pluck('name', 'id')
-                                    )
-                                    ->label('Estado o Provincia')
-                                    ->searchable()
-                                    ->preload()
-                                    ->live()
-                                    ->afterStateUpdated(function (Set $set) {
-                                        $set('city_id', null);
-                                    })
-                                    ->required(),
-                                Forms\Components\Select::make('city_id')
-                                    ->options(fn (Get $get): Collection => City::query()
-                                        ->where('state_id', $get('state_id'))
-                                        ->pluck('name', 'id')
-                                    )
-                                    ->label('Ciudad')
-                                    ->searchable()
-                                    ->preload()
-                                    ->required(),
-                            ]),
-                    ])
-                    ->columns(1),
-                Forms\Components\Section::make('Adjunto')
+                    ->columns(1)
+                    ->collapsible()
+                    ->collapsed(false),
+                
+                Forms\Components\Section::make('Documentos Adjuntos')
+                    ->description('Adjunta comprobantes o documentos relacionados')
                     ->schema([
                         FileUpload::make('attachment')
                             ->disk('public')
                             ->directory('expenses/attachments')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
-                            ->label('Archivo adjunto (PDF o imagen)')
+                            ->label('Archivos adjuntos')
+                            ->helperText('Formatos permitidos: PDF, imágenes. Tamaño máximo: 10MB')
                             ->maxSize(10240)
                             ->openable()
                             ->downloadable()
-                            ->nullable(),
+                            ->previewable()
+                            ->imageEditor()
+                            ->multiple()
+                            ->nullable()
+                            ->columnSpanFull(),
                     ])
-                    ->columns(1),
+                    ->columns(1)
+                    ->collapsible()
             ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->where('document_type', '!=', 'nota_credito'))
+            ->modifyQueryUsing(fn ($query) => $query->where(function ($q) {
+                $q->where('document_type', '!=', 'nota_credito')
+                  ->orWhereNull('document_type');
+            }))
             ->heading('Gastos')
             ->description('Lista de gastos')
             ->columns([
