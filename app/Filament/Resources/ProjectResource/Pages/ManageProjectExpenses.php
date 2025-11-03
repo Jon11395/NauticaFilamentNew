@@ -338,6 +338,27 @@ class ManageProjectExpenses extends ManageRelatedRecords
                             ->sortable()
                             ->searchable()
                             ->summarize(Sum::make()->label('Total')->money('CRC', locale: 'es_CR')),
+                        Tables\Columns\TextColumn::make('document_type')
+                            ->label('Tipo de documento')
+                            ->badge()
+                            ->alignEnd()
+                            ->color(fn (?string $state): string => match ($state) {
+                                'factura' => 'primary',
+                                'nota_credito' => 'danger',
+                                'nota_debito' => 'warning',
+                                'tiquete' => 'info',
+                                default => 'gray',
+                            })
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'factura' => 'Factura',
+                                'nota_credito' => 'Nota de Crédito',
+                                'nota_debito' => 'Nota de Débito',
+                                'tiquete' => 'Tiquete',
+                                null => 'Sin tipo',
+                                default => ucfirst($state ?? 'Desconocido'),
+                            })
+                            ->toggleable()
+                            ->searchable(),
                         Tables\Columns\TextColumn::make('type')
                             ->label('Tipo')
                             ->badge()
