@@ -293,6 +293,7 @@ class ManageProjectExpenses extends ManageRelatedRecords
     public function table(Table $table): Table
     {
         return $table
+            ->defaultSort('date', 'desc')
             ->modifyQueryUsing(fn ($query) => $query->where(function ($q) {
                 $q->where('document_type', '!=', 'nota_credito')
                   ->orWhereNull('document_type');

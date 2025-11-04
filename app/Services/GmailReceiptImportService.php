@@ -250,7 +250,7 @@ class GmailReceiptImportService
                             
                             // Add conversion note to concept
                             $conversionNote = sprintf(
-                                '<br/><small style="color:#10b981;">[✓ Convertido de USD $%s a ₡%s usando tipo de cambio(BCCR): %s]</small>',
+                                '<br/><small style="color:#10b981;">[✓ Convertido de USD $%s a ₡%s usando tipo de cambio: %s]</small>',
                                 number_format($originalUsdAmount, 2, '.', ','),
                                 number_format($convertedAmount, 2, '.', ','),
                                 number_format((float) $exchangeRate, 4, '.', ',')
