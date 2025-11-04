@@ -203,12 +203,11 @@ class ManageProjectExpenses extends ManageRelatedRecords
                                     ->required()
                                     ->maxLength(50)
                                     ->columnSpan(1),
-                                Forms\Components\DateTimePicker::make('date')
-                                    ->label('Fecha')
-                                    ->required()
-                                    ->default(now())
-                                    ->displayFormat('d/m/Y H:i')
+                                Forms\Components\TextInput::make('clave')
+                                    ->label('Clave')
+                                    ->maxLength(50)
                                     ->columnSpan(1),
+                                
                                 Forms\Components\TextInput::make('amount')
                                     ->label('Monto')
                                     ->prefix('₡')
@@ -217,8 +216,14 @@ class ManageProjectExpenses extends ManageRelatedRecords
                                     ->currencyMask(thousandSeparator: '.', decimalSeparator: ',', precision: 2)
                                     ->columnSpan(1),
                             ]),
-                        Forms\Components\Grid::make(2)
+                        Forms\Components\Grid::make(3)
                             ->schema([
+                                Forms\Components\DateTimePicker::make('date')
+                                    ->label('Fecha')
+                                    ->required()
+                                    ->default(now())
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->columnSpan(1),
                                 Forms\Components\Select::make('type')
                                     ->label('Estado')
                                     ->required()
