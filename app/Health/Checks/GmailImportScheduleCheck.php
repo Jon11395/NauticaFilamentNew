@@ -12,12 +12,31 @@ class GmailImportScheduleCheck extends ScheduleCheck
 {
     public function run(): Result
     {
-        $result = parent::run();
-
-        // Get the last successful run timestamp from cache
-        // Using the cache key 'health:schedule:gmail-import' as defined in AppServiceProvider
-        $cacheKey = 'health:schedule:gmail-import';
-        $lastRunTimestamp = Cache::store(config('cache.default'))->get($cacheKey);
+        // Use our own cache key (set via ->cacheKey() in AppServiceProvider)
+        $cacheKey = $this->getCacheKey();
+        $lastRunTimestamp = Cache::store($this->getCacheStoreName())->get($cacheKey);
+        
+        // Create a new result instead of using parent::run() to ensure we're checking the right schedule
+        $result = Result::make();
+        
+        // Check if the schedule ran within the max age
+        if ($lastRunTimestamp) {
+            $timezone = config('app.timezone', 'UTC');
+            $lastRunDate = Carbon::createFromTimestamp($lastRunTimestamp, 'UTC')->setTimezone($timezone);
+            $now = Carbon::now($timezone);
+            
+            // Calculate minutes ago using the same logic as parent but with timezone awareness
+            $minutesAgo = $lastRunDate->diffInMinutes($now);
+            
+            // Check if it's within the max age
+            if ($minutesAgo <= $this->heartbeatMaxAgeInMinutes) {
+                $result->ok();
+            } else {
+                $result->failed("The last run of the schedule was more than {$minutesAgo} minutes ago.");
+            }
+        } else {
+            $result->failed('The schedule did not run yet.');
+        }
 
         // Get the sync interval from GlobalConfig
         $gmailIntervalMinutes = (int) GlobalConfig::getValue('gmail_sync_interval_minutes', 60);

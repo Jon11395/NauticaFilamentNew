@@ -11,6 +11,7 @@ use App\Services\ExchangeRateService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use Smalot\PdfParser\Parser;
@@ -206,15 +207,55 @@ class GmailReceiptImportService
                                 'currency_source' => $currencySource,
                             ]);
                             
-                            $exchangeRate = $this->exchangeRateService->getUsdToCrcRate($receiptDate);
-                            $currencySource = $currencySource === 'XML' ? 'XML (sin TC)' : 'PDF';
+                            // Retry logic: try up to 3 times with 2 second delay between attempts
+                            $maxRetries = 3;
+                            $retryDelay = 2; // seconds
+                            $exchangeRate = null;
                             
-                            Log::info('Exchange rate fetched from BCCR', [
-                                'voucher' => $normalizedVoucher,
-                                'exchange_rate' => $exchangeRate,
-                                'source' => $currencySource,
-                                'receipt_date' => $receiptDate->format('Y-m-d'),
-                            ]);
+                            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                                // Clear cache before retry (except first attempt) to force fresh fetch
+                                if ($attempt > 1) {
+                                    $cacheKey = 'bccr_exchange_rate_' . $receiptDate->format('Y-m-d');
+                                    Cache::forget($cacheKey);
+                                    Log::debug('Cleared exchange rate cache before retry', [
+                                        'voucher' => $normalizedVoucher,
+                                        'cache_key' => $cacheKey,
+                                        'attempt' => $attempt,
+                                    ]);
+                                }
+                                
+                                $exchangeRate = $this->exchangeRateService->getUsdToCrcRate($receiptDate);
+                                
+                                if ($exchangeRate !== null && $exchangeRate > 0) {
+                                    Log::info('Exchange rate fetched from BCCR', [
+                                        'voucher' => $normalizedVoucher,
+                                        'exchange_rate' => $exchangeRate,
+                                        'source' => $currencySource === 'XML' ? 'XML (sin TC)' : 'PDF',
+                                        'receipt_date' => $receiptDate->format('Y-m-d'),
+                                        'attempt' => $attempt,
+                                        'success' => true,
+                                    ]);
+                                    break;
+                                }
+                                
+                                if ($attempt < $maxRetries) {
+                                    Log::warning('Exchange rate fetch failed, retrying', [
+                                        'voucher' => $normalizedVoucher,
+                                        'attempt' => $attempt,
+                                        'max_retries' => $maxRetries,
+                                        'retry_delay' => $retryDelay,
+                                    ]);
+                                    sleep($retryDelay);
+                                } else {
+                                    Log::error('Exchange rate fetch failed after all retries', [
+                                        'voucher' => $normalizedVoucher,
+                                        'attempts' => $maxRetries,
+                                        'receipt_date' => $receiptDate->format('Y-m-d'),
+                                    ]);
+                                }
+                            }
+                            
+                            $currencySource = $currencySource === 'XML' ? 'XML (sin TC)' : 'PDF';
                         } else {
                             Log::info('Using exchange rate from XML', [
                                 'voucher' => $normalizedVoucher,

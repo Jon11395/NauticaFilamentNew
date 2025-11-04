@@ -809,20 +809,26 @@ class TemporalExpenseResource extends Resource
         $conceptText = strip_tags($concept);
         
         // Extract conversion details from concept
-        // Actual format: "[✓ Convertido de USD $248.60 a ₡123,571.60 usando tipo de cambio(BCCR): 497.2500]"
-        // After strip_tags: "[✓ Convertido de USD $248.60 a ₡123,571.60 usando tipo de cambio(BCCR): 497.2500]"
+        // Actual format being stored: "[✓ Convertido de USD $248.60 a ₡123,571.60 usando tipo de cambio: 497.2500]"
+        // After strip_tags: "[✓ Convertido de USD $248.60 a ₡123,571.60 usando tipo de cambio: 497.2500]"
         $patterns = [
-            // Pattern 1: With checkmark and brackets, new format with "tipo de cambio(BCCR):"
+            // Pattern 1: With checkmark and brackets, current format "tipo de cambio:" (no BCCR)
+            '/\[✓\s*Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio:\s*([\d,\.]+)\]/i',
+            // Pattern 2: Without checkmark but with brackets, current format
+            '/\[Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio:\s*([\d,\.]+)\]/i',
+            // Pattern 3: Without brackets, current format
+            '/Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio:\s*([\d,\.]+)/i',
+            // Pattern 4: With checkmark and brackets, format with "tipo de cambio(BCCR):"
             '/\[✓\s*Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio\s*\(BCCR\):\s*([\d,\.]+)\]/i',
-            // Pattern 2: Without checkmark but with brackets, new format
+            // Pattern 5: Without checkmark but with brackets, format with "(BCCR)"
             '/\[Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio\s*\(BCCR\):\s*([\d,\.]+)\]/i',
-            // Pattern 3: Without brackets, new format
+            // Pattern 6: Without brackets, format with "(BCCR)"
             '/Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio\s*\(BCCR\):\s*([\d,\.]+)/i',
-            // Pattern 4: With checkmark and brackets, old format "TC:"
+            // Pattern 7: With checkmark and brackets, old format "TC:"
             '/\[✓\s*Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*TC:\s*([\d,\.]+)\]/i',
-            // Pattern 5: Without checkmark but with brackets, old format
+            // Pattern 8: Without checkmark but with brackets, old format
             '/\[Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*TC:\s*([\d,\.]+)\]/i',
-            // Pattern 6: Without brackets, old format
+            // Pattern 9: Without brackets, old format
             '/Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*TC:\s*([\d,\.]+)/i',
         ];
         
@@ -854,8 +860,30 @@ class TemporalExpenseResource extends Resource
             }
         }
         
-        // Fallback for other USD indicators
-        if (str_contains($conceptText, 'MONEDA: USD') || str_contains($concept, 'MONEDA: USD')) {
+        // Fallback for other USD indicators - check both plain text and HTML
+        // Normalize text: remove emojis and special characters, convert to lowercase for comparison
+        $normalizedText = mb_strtolower(preg_replace('/[^\w\s:]/u', '', $conceptText));
+        $normalizedHtml = mb_strtolower(preg_replace('/[^\w\s:]/u', '', strip_tags($concept)));
+        
+        // Check for various USD indicators
+        $usdPatterns = [
+            'moneda: usd',
+            'moneda usd',
+            'convertido de usd',
+            'usando tc:',
+            'usando tipo de cambio',
+        ];
+        
+        foreach ($usdPatterns as $pattern) {
+            if (str_contains($normalizedText, $pattern) || str_contains($normalizedHtml, $pattern)) {
+                return 'Este gasto estaba originalmente en dólares (USD)';
+            }
+        }
+        
+        // Also check raw concept (with HTML) for the exact pattern
+        if (str_contains($concept, 'MONEDA: USD') || 
+            stripos($concept, 'MONEDA: USD') !== false ||
+            stripos($concept, 'MONEDA USD') !== false) {
             return 'Este gasto estaba originalmente en dólares (USD)';
         }
         
