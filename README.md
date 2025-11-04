@@ -70,7 +70,7 @@ Para activar un cron schedule
 Once the file opens in `vim`, press `G` to jump to the bottom, then type `o` (lowercase “o”) to open a new blank line and enter insert mode.
 
    ```bash
-   0 * * * * cd /home/gruponauticadev/public_html && /opt/remi/php83/root/usr/bin/php artisan schedule:run >> /home/gruponauticadev/cron.log 2>&1
+   0 * * * * cd /home/gruponautica/public_html && /opt/remi/php83/root/usr/bin/php artisan schedule:run >> /home/gruponautica/cron.log 2>&1
    ```
    - Press `Esc` to exit insert mode.
    - Type `:wq` and press Enter to write the file and quit
