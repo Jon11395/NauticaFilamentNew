@@ -19,6 +19,7 @@ use Spatie\Health\Checks\Checks\ScheduleCheck;
 use Spatie\Health\Checks\Checks\BackupsCheck;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 use App\Models\GlobalConfig;
+use App\Health\Checks\GmailImportScheduleCheck;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -72,7 +73,7 @@ class AppServiceProvider extends ServiceProvider
                 UsedDiskSpaceCheck::new()
                     ->warnWhenUsedSpaceIsAbovePercentage(75)
                     ->failWhenUsedSpaceIsAbovePercentage(90),
-                ScheduleCheck::new()
+                GmailImportScheduleCheck::new()
                     ->name('Gmail Import Schedule')
                     ->cacheKey('health:schedule:gmail-import')
                     ->heartbeatMaxAgeInMinutes($gmailHeartbeatMaxAge),
