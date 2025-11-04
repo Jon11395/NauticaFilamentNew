@@ -57,7 +57,13 @@ class Kernel extends ConsoleKernel
                     && filled(GlobalConfig::getValue('gmail_refresh_token'))
                     && filled(GlobalConfig::getValue('gmail_user_email'));
             })
+            ->onSuccess(function () {
+                // Update heartbeat when command succeeds
+                Cache::store(config('cache.default'))->put('health:schedule:gmail-import', now()->timestamp);
+            })
             ->after(function () {
+                // Also update heartbeat after completion (regardless of success/failure)
+                // This ensures we track that the schedule ran, even if it failed
                 Cache::store(config('cache.default'))->put('health:schedule:gmail-import', now()->timestamp);
             });
     }
