@@ -42,7 +42,6 @@ commands:
 --------------------------------------------------------------------------
 Para activar un cron schedule
 
-
 1. ssh the server
 
 2. Get the public path to enter later with this commands:
