@@ -48,7 +48,8 @@ class SpreadsheetResource extends Resource
                 Tables\Columns\TextColumn::make('date')
                     ->label('Fecha')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('period')
                     ->label('Período')
                     ->searchable()

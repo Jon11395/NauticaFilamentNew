@@ -122,6 +122,7 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                         return 'N/A';
                     })
                     ->badge()
+                    ->searchable()
                     ->color(fn (string $state): string => match ($state) {
                         'Fija' => 'success',
                         'Por Horas' => 'info',

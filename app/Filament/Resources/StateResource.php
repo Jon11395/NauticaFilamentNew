@@ -47,7 +47,8 @@ class StateResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('country.name')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('latitude')
