@@ -130,6 +130,7 @@ class TemporalExpenseResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('date', 'desc')
             ->columns([
                 
                 Split::make([
