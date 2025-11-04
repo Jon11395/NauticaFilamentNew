@@ -338,6 +338,37 @@ class ManageProjectExpenses extends ManageRelatedRecords
                             ->sortable()
                             ->searchable()
                             ->summarize(Sum::make()->label('Total')->money('CRC', locale: 'es_CR')),
+                        Tables\Columns\TextColumn::make('usd_indicator')
+                            ->label('')
+                            ->state(fn (?Expense $record): ?string => $record && $this->isUsdConverted($record) ? 'USD' : null)
+                            ->badge()
+                            ->color('warning')
+                            ->icon('heroicon-o-currency-dollar')
+                            ->alignEnd()
+                            ->formatStateUsing(fn (?string $state): string => $state ? 'Convertido de USD' : '')
+                            ->tooltip(fn (?Expense $record): ?string => $record ? $this->getUsdConversionTooltip($record) : null)
+                            ->visible(fn (?Expense $record): bool => $record !== null && $this->isUsdConverted($record)),
+                        Tables\Columns\TextColumn::make('document_type')
+                            ->label('Tipo de documento')
+                            ->badge()
+                            ->alignEnd()
+                            ->color(fn (?string $state): string => match ($state) {
+                                'factura' => 'primary',
+                                'nota_credito' => 'danger',
+                                'nota_debito' => 'warning',
+                                'tiquete' => 'info',
+                                default => 'gray',
+                            })
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'factura' => 'Factura',
+                                'nota_credito' => 'Nota de Crédito',
+                                'nota_debito' => 'Nota de Débito',
+                                'tiquete' => 'Tiquete',
+                                null => 'Sin tipo',
+                                default => ucfirst($state ?? 'Desconocido'),
+                            })
+                            ->toggleable()
+                            ->searchable(),
                         Tables\Columns\TextColumn::make('type')
                             ->label('Tipo')
                             ->badge()
@@ -796,5 +827,90 @@ class ManageProjectExpenses extends ManageRelatedRecords
         } else {
             return "Ver adjuntos ({$count})";
         }
+    }
+
+    /**
+     * Check if an expense was converted from USD
+     */
+    protected function isUsdConverted(?Expense $record): bool
+    {
+        if (!$record || empty($record->concept)) {
+            return false;
+        }
+
+        $concept = (string) $record->concept;
+        
+        // Check for conversion indicators in the concept
+        return str_contains($concept, 'Convertido de USD') ||
+               str_contains($concept, 'MONEDA: USD') ||
+               str_contains($concept, 'usando TC:');
+    }
+
+    /**
+     * Get USD conversion tooltip information
+     */
+    protected function getUsdConversionTooltip(?Expense $record): ?string
+    {
+        if (!$record || empty($record->concept)) {
+            return null;
+        }
+
+        $concept = (string) $record->concept;
+        
+        // Strip HTML tags for pattern matching
+        $conceptText = strip_tags($concept);
+        
+        // Extract conversion details from concept
+        // Actual format: "[✓ Convertido de USD $248.60 a ₡123,571.60 usando tipo de cambio(BCCR): 497.2500]"
+        // After strip_tags: "[✓ Convertido de USD $248.60 a ₡123,571.60 usando tipo de cambio(BCCR): 497.2500]"
+        $patterns = [
+            // Pattern 1: With checkmark and brackets, new format with "tipo de cambio(BCCR):"
+            '/\[✓\s*Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio\s*\(BCCR\):\s*([\d,\.]+)\]/i',
+            // Pattern 2: Without checkmark but with brackets, new format
+            '/\[Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio\s*\(BCCR\):\s*([\d,\.]+)\]/i',
+            // Pattern 3: Without brackets, new format
+            '/Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*tipo\s*de\s*cambio\s*\(BCCR\):\s*([\d,\.]+)/i',
+            // Pattern 4: With checkmark and brackets, old format "TC:"
+            '/\[✓\s*Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*TC:\s*([\d,\.]+)\]/i',
+            // Pattern 5: Without checkmark but with brackets, old format
+            '/\[Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*TC:\s*([\d,\.]+)\]/i',
+            // Pattern 6: Without brackets, old format
+            '/Convertido de USD\s*\$([\d,\.]+)\s*a\s*₡([\d,\.]+)\s*usando\s*TC:\s*([\d,\.]+)/i',
+        ];
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $conceptText, $matches)) {
+                $usdAmount = $matches[1];
+                $crcAmount = $matches[2];
+                $exchangeRateRaw = $matches[3];
+                
+                // Clean up amounts - remove commas for parsing
+                $usdAmountClean = str_replace(',', '', $usdAmount);
+                $crcAmountClean = str_replace(',', '', $crcAmount);
+                $exchangeRateClean = str_replace(',', '', $exchangeRateRaw);
+                
+                // Format exchange rate to 2 decimals
+                $exchangeRate = number_format((float) $exchangeRateClean, 2, '.', ',');
+                
+                // Format amounts with proper commas
+                $usdFormatted = number_format((float) $usdAmountClean, 2, '.', ',');
+                $crcFormatted = number_format((float) $crcAmountClean, 2, '.', ',');
+                
+                // Format: Original $5.00 x TC ₡531.25 -> ₡2,656.25
+                return sprintf(
+                    'Original $%s x TC ₡%s -> ₡%s',
+                    $usdFormatted,
+                    $exchangeRate,
+                    $crcFormatted
+                );
+            }
+        }
+        
+        // Fallback for other USD indicators
+        if (str_contains($conceptText, 'MONEDA: USD') || str_contains($concept, 'MONEDA: USD')) {
+            return 'Este gasto estaba originalmente en dólares (USD)';
+        }
+        
+        return null;
     }
 }
