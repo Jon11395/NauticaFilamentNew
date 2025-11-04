@@ -42,6 +42,7 @@ class XmlReceiptParser
             ?? $this->firstValue($document, 'ResumenFactura/TotalVenta');
 
         $currency = $this->firstValue($document, 'ResumenFactura/CodigoMoneda');
+        $exchangeRate = $this->firstValue($document, 'ResumenFactura/TipoCambio');
         $saleCondition = $this->firstValue($document, 'CondicionVenta');
 
         $concepts = $this->collectConcepts($document);
@@ -68,6 +69,7 @@ class XmlReceiptParser
             'concept_quantities' => $lineQuantities,
             'amount' => $totalAmount,
             'currency' => $currency,
+            'exchange_rate' => $exchangeRate,
             'sale_condition' => $saleCondition,
             'concepts' => $concepts,
             'reference_info' => $referenceInfo,

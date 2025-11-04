@@ -7,11 +7,13 @@ use App\Models\GlobalConfig;
 use App\Models\Provider;
 use App\Services\Geo\CostaRicaLocationMapper;
 use App\Services\Receipts\XmlReceiptParser;
+use App\Services\ExchangeRateService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
+use Smalot\PdfParser\Parser;
 
 class GmailReceiptImportService
 {
@@ -19,6 +21,7 @@ class GmailReceiptImportService
         protected GmailService $gmailService,
         protected XmlReceiptParser $parser,
         protected CostaRicaLocationMapper $costaRicaLocationMapper,
+        protected ExchangeRateService $exchangeRateService,
     ) {
     }
 
@@ -128,7 +131,30 @@ class GmailReceiptImportService
 
                 try {
                     $attachmentPath = $this->storeAttachment($attachment['data'], $attachment['filename'] ?? null);
-                    $concept = $this->buildConcept($parsed, $message);
+                    
+                    // Detect currency early to use it in concept building
+                    $detectedCurrency = null;
+                    $exchangeRate = null;
+                    $currencySource = null;
+                    
+                    // Check XML first for currency information
+                    $xmlCurrency = $parsed['currency'] ?? null;
+                    $xmlExchangeRate = $parsed['exchange_rate'] ?? null;
+                    
+                    if (!empty($xmlCurrency) && strtoupper($xmlCurrency) === 'USD') {
+                        $detectedCurrency = 'USD';
+                        $exchangeRate = $xmlExchangeRate;
+                        $currencySource = 'XML';
+                    } elseif (empty($xmlCurrency) && !empty($pdfAttachments)) {
+                        // XML doesn't have currency info, check PDF
+                        $detectedCurrency = $this->detectCurrencyFromPdf($pdfAttachments[0]);
+                        if ($detectedCurrency === 'USD') {
+                            $currencySource = 'PDF';
+                        }
+                    }
+                    
+                    // Build concept with currency awareness
+                    $concept = $this->buildConcept($parsed, $message, $detectedCurrency);
                     $amount = $this->normalizeAmount($parsed['amount'] ?? null);
 
                     if ($amount === null) {
@@ -154,10 +180,116 @@ class GmailReceiptImportService
                         $storedPdfPath = $this->storeFirstPdfAttachment($pdfAttachments);
                     }
 
+                    // Currency detection was moved up before concept building
+                    $originalUsdAmount = null;
+
+                    // If currency is USD, convert to colones
+                    $convertedAmount = null;
+                    if ($detectedCurrency === 'USD') {
+                        $originalUsdAmount = (float) $amount;
+                        
+                        Log::info('USD currency detected - starting conversion', [
+                            'voucher' => $normalizedVoucher,
+                            'original_usd_amount' => $originalUsdAmount,
+                            'amount_before_conversion' => $amount,
+                            'exchange_rate_before_fetch' => $exchangeRate,
+                            'currency_source' => $currencySource,
+                        ]);
+                        
+                        // Get exchange rate: use XML if available, otherwise fetch from BCR
+                        if (empty($exchangeRate)) {
+                            $receiptDate = $this->resolveIssueDate($parsed['issue_date'] ?? null);
+                            
+                            Log::info('Fetching exchange rate from BCCR', [
+                                'voucher' => $normalizedVoucher,
+                                'receipt_date' => $receiptDate->format('Y-m-d'),
+                                'currency_source' => $currencySource,
+                            ]);
+                            
+                            $exchangeRate = $this->exchangeRateService->getUsdToCrcRate($receiptDate);
+                            $currencySource = $currencySource === 'XML' ? 'XML (sin TC)' : 'PDF';
+                            
+                            Log::info('Exchange rate fetched from BCCR', [
+                                'voucher' => $normalizedVoucher,
+                                'exchange_rate' => $exchangeRate,
+                                'source' => $currencySource,
+                                'receipt_date' => $receiptDate->format('Y-m-d'),
+                            ]);
+                        } else {
+                            Log::info('Using exchange rate from XML', [
+                                'voucher' => $normalizedVoucher,
+                                'exchange_rate' => $exchangeRate,
+                                'source' => $currencySource,
+                            ]);
+                        }
+                        
+                        // Convert USD to CRC - check if exchange rate is valid
+                        if ($exchangeRate !== null && $exchangeRate > 0) {
+                            // Convert USD to CRC
+                            $convertedAmount = $originalUsdAmount * (float) $exchangeRate;
+                            $amount = number_format($convertedAmount, 4, '.', '');
+                            
+                            Log::info('USD to CRC conversion completed', [
+                                'voucher' => $normalizedVoucher,
+                                'original_usd' => $originalUsdAmount,
+                                'exchange_rate' => $exchangeRate,
+                                'converted_crc' => $convertedAmount,
+                                'amount_after_conversion' => $amount,
+                                'source' => $currencySource,
+                            ]);
+                            
+                            $exchangeRateNote = sprintf(' (TC: %s)', number_format((float) $exchangeRate, 4, '.', ','));
+                            $summary['notes'][] = sprintf(
+                                'El comprobante %s estaba en dólares (USD $%s) y fue convertido a colones (₡%s)%s. [Fuente TC: %s]',
+                                $normalizedVoucher,
+                                number_format($originalUsdAmount, 2, '.', ','),
+                                number_format($convertedAmount, 2, '.', ','),
+                                $exchangeRateNote,
+                                $currencySource
+                            );
+                            
+                            // Add conversion note to concept
+                            $conversionNote = sprintf(
+                                '<br/><small style="color:#10b981;">[✓ Convertido de USD $%s a ₡%s usando tipo de cambio(BCCR): %s]</small>',
+                                number_format($originalUsdAmount, 2, '.', ','),
+                                number_format($convertedAmount, 2, '.', ','),
+                                number_format((float) $exchangeRate, 4, '.', ',')
+                            );
+                            $concept = $concept ? $concept . $conversionNote : $conversionNote;
+                        } else {
+                            // Couldn't get exchange rate, keep as USD but add warning
+                            Log::warning('Could not get exchange rate for USD receipt - conversion NOT performed', [
+                                'voucher' => $normalizedVoucher,
+                                'original_usd' => $originalUsdAmount,
+                                'exchange_rate' => $exchangeRate,
+                                'exchange_rate_type' => gettype($exchangeRate),
+                                'currency_source' => $currencySource,
+                                'amount_will_remain_as_usd' => $amount,
+                            ]);
+                            
+                            $summary['errors'][] = sprintf(
+                                'El comprobante %s está en dólares (USD $%s) pero no se pudo obtener el tipo de cambio del BCCR. Verificar conversión manual.',
+                                $normalizedVoucher,
+                                number_format($originalUsdAmount, 2, '.', ',')
+                            );
+                            
+                            $currencyNote = '<br/><small style="color:#f59e0b;">[⚠️ MONEDA: USD - No se pudo obtener tipo de cambio del BCCR]</small>';
+                            $concept = $concept ? $concept . $currencyNote : $currencyNote;
+                        }
+                    }
+
                     // For credit notes, use the reference number (clave of original invoice) instead of the credit note's own clave
                     $claveToStore = ($parsed['receipt_type'] ?? null) === 'nota_credito' && isset($parsed['reference_info']['numero'])
                         ? $parsed['reference_info']['numero']
                         : ($parsed['clave'] ?? null);
+
+                    // Log the final amount being saved
+                    Log::info('Creating expense with final amount', [
+                        'voucher' => $normalizedVoucher,
+                        'final_amount' => $amount,
+                        'detected_currency' => $detectedCurrency ?? 'CRC',
+                        'is_usd_converted' => ($detectedCurrency === 'USD' && isset($convertedAmount)),
+                    ]);
 
                     Expense::create([
                         'voucher' => $normalizedVoucher,
@@ -256,12 +388,12 @@ class GmailReceiptImportService
         return $path;
     }
 
-    protected function buildConcept(array $parsed, array $message): ?string
+    protected function buildConcept(array $parsed, array $message, ?string $currency = null): ?string
     {
         $conceptLines = collect($parsed['concept_lines'] ?? [])
-            ->map(function ($line) {
+            ->map(function ($line) use ($currency) {
                 $detail = isset($line['detail']) ? trim(strip_tags((string) $line['detail'])) : null;
-                $total = isset($line['total']) ? $this->formatLineAmount($line['total']) : null;
+                $total = isset($line['total']) ? $this->formatLineAmount($line['total'], $currency) : null;
                 $quantity = isset($line['quantity']) ? $this->formatQuantity($line['quantity']) : null;
 
                 return [
@@ -294,7 +426,7 @@ class GmailReceiptImportService
             : null;
     }
 
-    protected function formatLineAmount(?string $amount): ?string
+    protected function formatLineAmount(?string $amount, ?string $currency = null): ?string
     {
         if ($amount === null || $amount === '') {
             return null;
@@ -318,7 +450,10 @@ class GmailReceiptImportService
             return null;
         }
 
-        return '₡' . number_format($float, 2, '.', ',');
+        // Use dollar sign for USD receipts, colon symbol for CRC
+        $symbol = ($currency === 'USD') ? '$' : '₡';
+        
+        return $symbol . number_format($float, 2, '.', ',');
     }
 
     protected function formatQuantity(?string $quantity): ?string
@@ -1078,6 +1213,102 @@ class GmailReceiptImportService
             ->where('provider_id', $providerId)
             ->where('voucher', $normalizedReference)
             ->first();
+    }
+
+    protected function detectCurrencyFromPdf(array $pdfAttachment): ?string
+    {
+        try {
+            $data = $pdfAttachment['data'] ?? null;
+            
+            if (empty($data)) {
+                return null;
+            }
+
+            // Determine PDF content - Gmail attachments are usually already decoded
+            // but check if it's base64 encoded or already binary
+            $pdfContent = $data;
+            
+            // Check if it's already a PDF (starts with PDF signature)
+            if (str_starts_with($data, '%PDF')) {
+                $pdfContent = $data;
+            } else {
+                // Try to decode as base64
+                $decoded = base64_decode($data, true);
+                if ($decoded !== false && strlen($decoded) > 0 && str_starts_with($decoded, '%PDF')) {
+                    $pdfContent = $decoded;
+                } else {
+                    // If it's not base64 and not PDF, it might be the raw data
+                    $pdfContent = $data;
+                }
+            }
+
+            // Parse PDF using smalot/pdfparser
+            $parser = new Parser();
+            $pdf = $parser->parseContent($pdfContent);
+            
+            // Extract text from all pages (limit to first few pages for performance)
+            $text = '';
+            $pages = $pdf->getPages();
+            $maxPages = min(3, count($pages)); // Check first 3 pages
+            
+            for ($i = 0; $i < $maxPages; $i++) {
+                $text .= $pages[$i]->getText() . ' ';
+            }
+            
+            // Normalize text for searching
+            $normalizedText = strtolower($text);
+            
+            // Check for dollar indicators
+            $dollarIndicators = [
+                '$', // Dollar sign
+                'usd',
+                'dólar',
+                'dolar',
+                'dollar',
+                'dólares',
+                'dolares',
+                'dollars',
+            ];
+            
+            $colonIndicators = [
+                '₡', // Colon symbol
+                'colón',
+                'colon',
+                'colones',
+                'crc',
+            ];
+            
+            // Count occurrences of dollar and colon indicators
+            $dollarCount = 0;
+            $colonCount = 0;
+            
+            foreach ($dollarIndicators as $indicator) {
+                $dollarCount += substr_count($normalizedText, $indicator);
+            }
+            
+            foreach ($colonIndicators as $indicator) {
+                $colonCount += substr_count($normalizedText, $indicator);
+            }
+            
+            // If we find dollar signs/indicators and significantly more than colon indicators, it's USD
+            if ($dollarCount > 0 && ($dollarCount > $colonCount || $colonCount === 0)) {
+                // Additional check: look for USD patterns near amounts
+                if (preg_match('/\$\s*[\d,]+\.?\d*/', $text) || preg_match('/(usd|dólar|dollar)\s*[\d,]+\.?\d*/i', $text)) {
+                    return 'USD';
+                }
+            }
+            
+            // Default to CRC (Colones) if no clear indication
+            return null;
+        } catch (\Throwable $exception) {
+            // Log error but don't fail the import
+            Log::warning('Failed to detect currency from PDF', [
+                'exception' => $exception,
+                'filename' => $pdfAttachment['filename'] ?? null,
+            ]);
+            
+            return null;
+        }
     }
 }
 

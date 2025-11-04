@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'bccr' => [
+        'nombre' => env('BCCR_NOMBRE', 'NAUTICA'),
+        'email' => env('BCCR_EMAIL', 'info@nautica.cr'),
+        'token' => env('BCCR_TOKEN'),
+    ],
+
 ];
