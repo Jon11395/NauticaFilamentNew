@@ -100,7 +100,7 @@ Once the file opens in `vim`, press `G` to jump to the bottom, then type `o` (lo
 8. Optional: tail the log to confirm it runs each minute:
 
    ```bash
-   tail -f /home/gruponauticadev/cron.log
+   tail -f /home/gruponautica/cron.log
    ```
   - to exit tail `Ctrl + C`
 
