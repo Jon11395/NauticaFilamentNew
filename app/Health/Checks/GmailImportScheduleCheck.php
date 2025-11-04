@@ -25,45 +25,54 @@ class GmailImportScheduleCheck extends ScheduleCheck
         if ($lastRunTimestamp) {
             $lastRunDate = Carbon::createFromTimestamp($lastRunTimestamp);
             $now = Carbon::now();
-            $diffInMinutes = $now->diffInMinutes($lastRunDate);
-            $diffInHours = $now->diffInHours($lastRunDate);
-            $diffInDays = $now->diffInDays($lastRunDate);
+            
+            // Calculate time ago (use abs to ensure positive value)
+            $diffInMinutes = abs(floor($now->diffInMinutes($lastRunDate)));
+            $diffInHours = abs(floor($now->diffInHours($lastRunDate)));
+            $diffInDays = abs(floor($now->diffInDays($lastRunDate)));
 
             // Format the time difference
             if ($diffInDays > 0) {
                 $timeAgo = $diffInDays . ' day' . ($diffInDays > 1 ? 's' : '') . ' ago';
             } elseif ($diffInHours > 0) {
                 $timeAgo = $diffInHours . ' hour' . ($diffInHours > 1 ? 's' : '') . ' ago';
-            } else {
+            } elseif ($diffInMinutes > 0) {
                 $timeAgo = $diffInMinutes . ' minute' . ($diffInMinutes > 1 ? 's' : '') . ' ago';
+            } else {
+                $timeAgo = 'just now';
             }
 
             // Calculate next run time
             $nextRunDate = $lastRunDate->copy()->addMinutes($gmailIntervalMinutes);
             
-            // If the next run time is in the past (shouldn't happen, but just in case), add another interval
-            if ($nextRunDate->isPast()) {
+            // If the next run time is in the past, add another interval
+            while ($nextRunDate->isPast()) {
                 $nextRunDate->addMinutes($gmailIntervalMinutes);
             }
 
-            // Calculate time until next run
-            $minutesUntilNext = $now->diffInMinutes($nextRunDate, false);
-            $hoursUntilNext = $now->diffInHours($nextRunDate, false);
-            $daysUntilNext = $now->diffInDays($nextRunDate, false);
+            // Calculate time until next run (use absolute and floor to get whole numbers)
+            $minutesUntilNext = abs(floor($now->diffInMinutes($nextRunDate, false)));
+            $hoursUntilNext = abs(floor($now->diffInHours($nextRunDate, false)));
+            $daysUntilNext = abs(floor($now->diffInDays($nextRunDate, false)));
 
             // Format time until next run
             if ($daysUntilNext > 0) {
                 $timeUntilNext = $daysUntilNext . ' day' . ($daysUntilNext > 1 ? 's' : '');
             } elseif ($hoursUntilNext > 0) {
                 $timeUntilNext = $hoursUntilNext . ' hour' . ($hoursUntilNext > 1 ? 's' : '');
-            } else {
+            } elseif ($minutesUntilNext > 0) {
                 $timeUntilNext = $minutesUntilNext . ' minute' . ($minutesUntilNext > 1 ? 's' : '');
+            } else {
+                $timeUntilNext = 'soon';
             }
 
             // Format interval
-            $intervalText = $gmailIntervalMinutes >= 60 
-                ? ($gmailIntervalMinutes / 60) . ' hour' . ($gmailIntervalMinutes >= 120 ? 's' : '')
-                : $gmailIntervalMinutes . ' minute' . ($gmailIntervalMinutes > 1 ? 's' : '');
+            if ($gmailIntervalMinutes >= 60) {
+                $hours = floor($gmailIntervalMinutes / 60);
+                $intervalText = $hours . ' hour' . ($hours > 1 ? 's' : '');
+            } else {
+                $intervalText = $gmailIntervalMinutes . ' minute' . ($gmailIntervalMinutes > 1 ? 's' : '');
+            }
 
             // Build short summary with key details
             $shortSummary = "Last: {$lastRunDate->format('Y-m-d H:i:s')} ({$timeAgo}) | Next: {$nextRunDate->format('Y-m-d H:i:s')} (in {$timeUntilNext})";
@@ -78,9 +87,12 @@ class GmailImportScheduleCheck extends ScheduleCheck
             ])->shortSummary($shortSummary);
         } else {
             // Format interval
-            $intervalText = $gmailIntervalMinutes >= 60 
-                ? ($gmailIntervalMinutes / 60) . ' hour' . ($gmailIntervalMinutes >= 120 ? 's' : '')
-                : $gmailIntervalMinutes . ' minute' . ($gmailIntervalMinutes > 1 ? 's' : '');
+            if ($gmailIntervalMinutes >= 60) {
+                $hours = floor($gmailIntervalMinutes / 60);
+                $intervalText = $hours . ' hour' . ($hours > 1 ? 's' : '');
+            } else {
+                $intervalText = $gmailIntervalMinutes . ' minute' . ($gmailIntervalMinutes > 1 ? 's' : '');
+            }
 
             $shortSummary = "No heartbeat recorded yet | Interval: {$intervalText}";
             
