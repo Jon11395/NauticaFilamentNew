@@ -50,13 +50,50 @@ class GmailImportScheduleCheck extends ScheduleCheck
                 $timeAgo = 'just now';
             }
 
-            // Calculate next run time
-            $nextRunDate = $lastRunDate->copy()->addMinutes($gmailIntervalMinutes);
+            // Calculate next run time based on the actual cron schedule
+            // The schedule runs at the top of the hour (0 * * * *) or at specific intervals
+            $hours = (int) ($gmailIntervalMinutes / 60);
             
-            // If the next run time is in the past, add another interval
-            while ($nextRunDate->isPast()) {
-                $nextRunDate->addMinutes($gmailIntervalMinutes);
+            if ($hours === 1) {
+                // Runs every hour at minute 0 (e.g., 8:00, 9:00, 10:00)
+                // Next run is the start of the next hour
+                $nextRunDate = $now->copy()->startOfHour()->addHour();
+            } elseif ($hours < 24) {
+                // Runs every N hours at minute 0 (e.g., every 2 hours: 0:00, 2:00, 4:00, etc.)
+                $currentHour = $now->hour;
+                $nextHour = (int) (ceil(($currentHour + 1) / $hours) * $hours);
+                
+                if ($nextHour >= 24) {
+                    // Next run is tomorrow at the first interval hour
+                    $nextRunDate = $now->copy()->startOfDay()->addDay()->hour(0)->minute(0)->second(0);
+                } else {
+                    // Next run is today at the calculated hour
+                    $nextRunDate = $now->copy()->hour($nextHour)->minute(0)->second(0);
+                    // If we've already passed this hour today, move to the next interval
+                    if ($nextRunDate->isPast()) {
+                        $nextHour = $nextHour + $hours;
+                        if ($nextHour >= 24) {
+                            $nextRunDate = $now->copy()->startOfDay()->addDay()->hour(0)->minute(0)->second(0);
+                        } else {
+                            $nextRunDate->hour($nextHour);
+                        }
+                    }
+                }
+            } elseif ($hours === 24) {
+                // Runs daily at midnight
+                $nextRunDate = $now->copy()->startOfDay()->addDay();
+            } else {
+                // Runs every N days at midnight
+                $days = (int) ($hours / 24);
+                $nextRunDate = $now->copy()->startOfDay()->addDays($days);
+                // If today is the run day and we're past midnight, move to next cycle
+                if ($nextRunDate->isSameDay($now) && $now->hour > 0) {
+                    $nextRunDate->addDays($days);
+                }
             }
+            
+            // Ensure we're in the app timezone
+            $nextRunDate->setTimezone($timezone);
 
             // Calculate time until next run using total elapsed time
             // Calculate total seconds difference, then convert to minutes/hours/days
