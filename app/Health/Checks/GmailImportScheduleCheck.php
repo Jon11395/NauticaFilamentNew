@@ -26,22 +26,26 @@ class GmailImportScheduleCheck extends ScheduleCheck
             // Get app timezone
             $timezone = config('app.timezone', 'UTC');
             
-            // Set dates to app timezone
-            $lastRunDate = Carbon::createFromTimestamp($lastRunTimestamp)->setTimezone($timezone);
+            // Timestamp is stored as Unix timestamp (timezone-agnostic)
+            // Create Carbon instance in UTC first, then convert to app timezone
+            $lastRunDate = Carbon::createFromTimestamp($lastRunTimestamp, 'UTC')->setTimezone($timezone);
             $now = Carbon::now($timezone);
             
-            // Calculate time ago (use abs to ensure positive value)
-            $diffInMinutes = abs(floor($now->diffInMinutes($lastRunDate)));
-            $diffInHours = abs(floor($now->diffInHours($lastRunDate)));
-            $diffInDays = abs(floor($now->diffInDays($lastRunDate)));
+            // Calculate time ago using total elapsed time (not calendar days)
+            // Calculate total seconds difference, then convert to minutes/hours/days
+            $totalSeconds = abs($now->diffInSeconds($lastRunDate));
+            $totalMinutes = floor($totalSeconds / 60);
+            $totalHours = floor($totalMinutes / 60);
+            $totalDays = floor($totalHours / 24);
 
-            // Format the time difference
-            if ($diffInDays > 0) {
-                $timeAgo = $diffInDays . ' day' . ($diffInDays > 1 ? 's' : '') . ' ago';
-            } elseif ($diffInHours > 0) {
-                $timeAgo = $diffInHours . ' hour' . ($diffInHours > 1 ? 's' : '') . ' ago';
-            } elseif ($diffInMinutes > 0) {
-                $timeAgo = $diffInMinutes . ' minute' . ($diffInMinutes > 1 ? 's' : '') . ' ago';
+            // Format the time difference - prioritize showing smaller units when possible
+            // Only show days if it's 24+ hours
+            if ($totalHours >= 24) {
+                $timeAgo = $totalDays . ' day' . ($totalDays > 1 ? 's' : '') . ' ago';
+            } elseif ($totalHours >= 1) {
+                $timeAgo = $totalHours . ' hour' . ($totalHours > 1 ? 's' : '') . ' ago';
+            } elseif ($totalMinutes >= 1) {
+                $timeAgo = $totalMinutes . ' minute' . ($totalMinutes > 1 ? 's' : '') . ' ago';
             } else {
                 $timeAgo = 'just now';
             }
@@ -54,18 +58,20 @@ class GmailImportScheduleCheck extends ScheduleCheck
                 $nextRunDate->addMinutes($gmailIntervalMinutes);
             }
 
-            // Calculate time until next run (use absolute and floor to get whole numbers)
-            $minutesUntilNext = abs(floor($now->diffInMinutes($nextRunDate, false)));
-            $hoursUntilNext = abs(floor($now->diffInHours($nextRunDate, false)));
-            $daysUntilNext = abs(floor($now->diffInDays($nextRunDate, false)));
+            // Calculate time until next run using total elapsed time
+            // Calculate total seconds difference, then convert to minutes/hours/days
+            $totalSecondsUntilNext = abs($now->diffInSeconds($nextRunDate, false));
+            $totalMinutesUntilNext = floor($totalSecondsUntilNext / 60);
+            $totalHoursUntilNext = floor($totalMinutesUntilNext / 60);
+            $totalDaysUntilNext = floor($totalHoursUntilNext / 24);
 
-            // Format time until next run
-            if ($daysUntilNext > 0) {
-                $timeUntilNext = $daysUntilNext . ' day' . ($daysUntilNext > 1 ? 's' : '');
-            } elseif ($hoursUntilNext > 0) {
-                $timeUntilNext = $hoursUntilNext . ' hour' . ($hoursUntilNext > 1 ? 's' : '');
-            } elseif ($minutesUntilNext > 0) {
-                $timeUntilNext = $minutesUntilNext . ' minute' . ($minutesUntilNext > 1 ? 's' : '');
+            // Format time until next run - only show days if it's 24+ hours
+            if ($totalHoursUntilNext >= 24) {
+                $timeUntilNext = $totalDaysUntilNext . ' day' . ($totalDaysUntilNext > 1 ? 's' : '');
+            } elseif ($totalHoursUntilNext >= 1) {
+                $timeUntilNext = $totalHoursUntilNext . ' hour' . ($totalHoursUntilNext > 1 ? 's' : '');
+            } elseif ($totalMinutesUntilNext >= 1) {
+                $timeUntilNext = $totalMinutesUntilNext . ' minute' . ($totalMinutesUntilNext > 1 ? 's' : '');
             } else {
                 $timeUntilNext = 'soon';
             }
