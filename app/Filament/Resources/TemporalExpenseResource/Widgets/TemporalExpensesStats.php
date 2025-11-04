@@ -34,18 +34,18 @@ class TemporalExpensesStats extends BaseWidget
 
         $cards = [
             Card::make('Gastos temporales', number_format($totalExpenses))
-                ->description('₡' . number_format($totalAmount, 2, ',', '.') . ' total por asignar (sin notas de crédito)')
+                ->description('₡' . number_format($totalAmount, 2, ',', '.') . ' total por asignar')
                 ->icon('heroicon-o-banknotes')
                 ->color('success'),
         ];
 
         // Add credit notes stat if there are any
-        if ($totalCreditNotes > 0) {
+
             $cards[] = Card::make('Notas de crédito', number_format($totalCreditNotes))
                 ->description('₡' . number_format($totalCreditAmount, 2, ',', '.') . ' por aplicar')
                 ->icon('heroicon-o-minus-circle')
                 ->color('danger');
-        }
+
 
         return $cards;
     }

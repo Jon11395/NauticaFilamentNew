@@ -17,6 +17,7 @@ use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Card;
 use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -192,7 +193,8 @@ class TemporalExpenseResource extends Resource
                             ->weight('bold')
                             ->alignEnd()
                             ->sortable()
-                            ->searchable(),
+                            ->searchable()
+                            ->summarize(Sum::make()->label('Total')->money('CRC', locale: 'es_CR')),
                         Tables\Columns\TextColumn::make('usd_indicator')
                             ->label('')
                             ->state(fn (?Expense $record): ?string => $record && self::isUsdConverted($record) ? 'USD' : null)
