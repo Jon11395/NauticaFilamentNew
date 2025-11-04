@@ -65,6 +65,9 @@ class GmailImportScheduleCheck extends ScheduleCheck
                 ? ($gmailIntervalMinutes / 60) . ' hour' . ($gmailIntervalMinutes >= 120 ? 's' : '')
                 : $gmailIntervalMinutes . ' minute' . ($gmailIntervalMinutes > 1 ? 's' : '');
 
+            // Build short summary with key details
+            $shortSummary = "Last: {$lastRunDate->format('Y-m-d H:i:s')} ({$timeAgo}) | Next: {$nextRunDate->format('Y-m-d H:i:s')} (in {$timeUntilNext})";
+            
             // Add metadata about the last successful run and next run
             $result->meta([
                 'Last successful run' => $lastRunDate->format('Y-m-d H:i:s'),
@@ -72,18 +75,20 @@ class GmailImportScheduleCheck extends ScheduleCheck
                 'Next scheduled run' => $nextRunDate->format('Y-m-d H:i:s'),
                 'Time until next run' => $timeUntilNext,
                 'Sync interval' => $intervalText,
-            ]);
+            ])->shortSummary($shortSummary);
         } else {
             // Format interval
             $intervalText = $gmailIntervalMinutes >= 60 
                 ? ($gmailIntervalMinutes / 60) . ' hour' . ($gmailIntervalMinutes >= 120 ? 's' : '')
                 : $gmailIntervalMinutes . ' minute' . ($gmailIntervalMinutes > 1 ? 's' : '');
 
+            $shortSummary = "No heartbeat recorded yet | Interval: {$intervalText}";
+            
             $result->meta([
                 'Last successful run' => 'Never',
                 'Status' => 'No heartbeat recorded yet',
                 'Sync interval' => $intervalText,
-            ]);
+            ])->shortSummary($shortSummary);
         }
 
         return $result;
