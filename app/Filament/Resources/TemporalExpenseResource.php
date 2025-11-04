@@ -25,6 +25,7 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Filament\Notifications\Notification;
+use Carbon\Carbon;
 
 class TemporalExpenseResource extends Resource
 {
@@ -241,6 +242,36 @@ class TemporalExpenseResource extends Resource
                 ])->from('md'),
             ])
             ->filters([
+                Tables\Filters\Filter::make('date')
+                    ->form([
+                        Forms\Components\DatePicker::make('date_from')
+                            ->label('Fecha desde'),
+                        Forms\Components\DatePicker::make('date_until')
+                            ->label('Fecha hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['date_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('date', '>=', $date),
+                            )
+                            ->when(
+                                $data['date_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['date_from'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('Fecha desde: ' . Carbon::parse($data['date_from'])->format('d/m/Y'))
+                                ->removeField('date_from');
+                        }
+                        if ($data['date_until'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('Fecha hasta: ' . Carbon::parse($data['date_until'])->format('d/m/Y'))
+                                ->removeField('date_until');
+                        }
+                        return $indicators;
+                    }),
                 Tables\Filters\Filter::make('usd_converted')
                     ->label('Convertido de USD')
                     ->query(fn (Builder $query): Builder => 
@@ -258,9 +289,7 @@ class TemporalExpenseResource extends Resource
                         'nota_debito' => 'Nota de Débito',
                         'tiquete' => 'Tiquete',
                     ]),
-                Tables\Filters\SelectFilter::make('project')
-                    ->relationship('project', 'name')
-                    ->label('Proyecto'),
+
                 Tables\Filters\SelectFilter::make('provider')
                     ->relationship('provider', 'name')
                     ->label('Proveedor'),
