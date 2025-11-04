@@ -23,8 +23,12 @@ class GmailImportScheduleCheck extends ScheduleCheck
         $gmailIntervalMinutes = (int) GlobalConfig::getValue('gmail_sync_interval_minutes', 60);
 
         if ($lastRunTimestamp) {
-            $lastRunDate = Carbon::createFromTimestamp($lastRunTimestamp);
-            $now = Carbon::now();
+            // Get app timezone
+            $timezone = config('app.timezone', 'UTC');
+            
+            // Set dates to app timezone
+            $lastRunDate = Carbon::createFromTimestamp($lastRunTimestamp)->setTimezone($timezone);
+            $now = Carbon::now($timezone);
             
             // Calculate time ago (use abs to ensure positive value)
             $diffInMinutes = abs(floor($now->diffInMinutes($lastRunDate)));
@@ -74,8 +78,12 @@ class GmailImportScheduleCheck extends ScheduleCheck
                 $intervalText = $gmailIntervalMinutes . ' minute' . ($gmailIntervalMinutes > 1 ? 's' : '');
             }
 
-            // Build short summary with key details
-            $shortSummary = "Last: {$lastRunDate->format('Y-m-d H:i:s')} ({$timeAgo}) | Next: {$nextRunDate->format('Y-m-d H:i:s')} (in {$timeUntilNext})";
+            // Format dates in a more readable way
+            $lastRunFormatted = $lastRunDate->format('M j, Y g:i A');
+            $nextRunFormatted = $nextRunDate->format('M j, Y g:i A');
+
+            // Build short summary with cleaner format
+            $shortSummary = "Last run: {$lastRunFormatted} ({$timeAgo}) • Next run: {$nextRunFormatted} (in {$timeUntilNext})";
             
             // Add metadata about the last successful run and next run
             $result->meta([
