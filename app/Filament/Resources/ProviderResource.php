@@ -163,16 +163,19 @@ class ProviderResource extends Resource
                             ->label('Ciudad')
                             ->numeric()
                             ->sortable()
+                            ->searchable()
                             ->icon('heroicon-m-building-office-2'),
                         Tables\Columns\TextColumn::make('state.name')
                             ->label('Estado')
                             ->numeric()
                             ->sortable()
+                            ->searchable()
                             ->icon('heroicon-m-map-pin'),
                         Tables\Columns\TextColumn::make('country.name')
                             ->label('País')
                             ->numeric()
                             ->sortable()
+                            ->searchable()
                             ->icon('heroicon-m-flag'),
                         
                     ]),

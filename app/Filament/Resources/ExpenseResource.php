@@ -62,16 +62,20 @@ class ExpenseResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('voucher')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('date')
                     ->dateTime()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('concept')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('amount')
                     ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('type'),
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('type')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('provider_id')
                     ->numeric()
                     ->sortable(),

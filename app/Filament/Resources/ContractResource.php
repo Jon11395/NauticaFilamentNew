@@ -47,7 +47,8 @@ class ContractResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('amount')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('project_id')
                     ->numeric()
                     ->sortable(),

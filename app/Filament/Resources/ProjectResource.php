@@ -107,17 +107,20 @@ class ProjectResource extends Resource
                                     'in_progress' => 'En progreso',
                                     'stopped' => 'Detenido',
                                     'finished' => 'Terminado',
-                            }),
+                            })
+                            ->searchable(),
                         Tables\Columns\TextColumn::make('offer_amount')
                             ->label('Oferta')
                             ->numeric()
                             ->sortable()
+                            ->searchable()
                             ->money('CRC')
                             ->summarize(Sum::make()->label('Total')->money('CRC')),
                         Tables\Columns\TextColumn::make('start_date')
                             ->label('Inicio')
                             ->date()
                             ->sortable()
+                            ->searchable()
                             ->icon('heroicon-m-calendar-days'),
                          
                     ])->space(2),

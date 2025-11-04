@@ -149,11 +149,13 @@ class TemporalExpenseResource extends Resource
                         Tables\Columns\TextColumn::make('provider.name')
                             ->label('Proveedor')
                             ->weight('bold')
+                            ->searchable()
                             ->toggleable(),
                         Tables\Columns\TextColumn::make('concept')
                             ->label('Concepto')
                             ->formatStateUsing(fn ($state) => strip_tags((string) $state))
                             ->limit(80)
+                            ->searchable()
                             ->tooltip(fn (Model $record) => self::formatConceptTooltip($record->concept))
                             ->extraAttributes(['class' => 'text-sm text-gray-600 dark:text-gray-300']),
                         Tables\Columns\TextColumn::make('related_invoice')
@@ -187,7 +189,8 @@ class TemporalExpenseResource extends Resource
                             ->money('CRC', locale: 'es_CR')
                             ->weight('bold')
                             ->alignEnd()
-                            ->sortable(),
+                            ->sortable()
+                            ->searchable(),
                         Tables\Columns\TextColumn::make('usd_indicator')
                             ->label('')
                             ->state(fn (?Expense $record): ?string => $record && self::isUsdConverted($record) ? 'USD' : null)
@@ -216,7 +219,8 @@ class TemporalExpenseResource extends Resource
                                 'tiquete' => 'Tiquete',
                                 null => 'Sin tipo',
                                 default => ucfirst($state ?? 'Desconocido'),
-                            }),
+                            })
+                            ->searchable(),
                         Tables\Columns\TextColumn::make('type')
                             ->label('Tipo')
                             ->badge()
@@ -230,7 +234,8 @@ class TemporalExpenseResource extends Resource
                                 'paid' => 'Pagado',
                                 'unpaid' => 'No pagado',
                                 default => ucfirst($state),
-                            }),
+                            })
+                            ->searchable(),
                     ])->space(1)->extraAttributes(['class' => 'items-end text-right'])->grow(false),
                 ])->from('md'),
             ])
