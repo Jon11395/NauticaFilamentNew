@@ -38,13 +38,18 @@ class GlobalConfig extends Model
      */
     public static function getValue(string $key, $default = null)
     {
-        $config = static::where('key', $key)->first();
-        
-        if (!$config) {
+        try {
+            $config = static::where('key', $key)->first();
+            
+            if (!$config) {
+                return $default;
+            }
+
+            return static::castValue($config->value, $config->type);
+        } catch (\Exception $e) {
+            // Return default if database query fails (prevents recursive logging)
             return $default;
         }
-
-        return static::castValue($config->value, $config->type);
     }
 
     /**

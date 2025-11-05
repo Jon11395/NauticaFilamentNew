@@ -20,6 +20,8 @@ use Spatie\Health\Checks\Checks\BackupsCheck;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 use App\Models\GlobalConfig;
 use App\Health\Checks\GmailImportScheduleCheck;
+use App\Mail\Transports\GmailApiTransport;
+use Illuminate\Mail\MailManager;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -29,7 +31,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register custom Gmail API mail transport
+        $this->app->resolving(MailManager::class, function (MailManager $manager) {
+            $manager->extend('gmail-api', function (array $config) {
+                return new GmailApiTransport();
+            });
+        });
     }
 
     /**
@@ -57,27 +64,49 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
+        // Set mail from address from GlobalConfig if available
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('global_configs')) {
+                $gmailEmail = GlobalConfig::getValue('gmail_user_email');
+                if ($gmailEmail) {
+                    config(['mail.from.address' => $gmailEmail]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently fail if database is not available
+        }
+
    
 
         if (app()->bound('health')) {
-            $gmailIntervalMinutes = (int) GlobalConfig::getValue('gmail_sync_interval_minutes', 60);
-            $gmailHeartbeatMaxAge = max((int) ceil($gmailIntervalMinutes * 1.5), $gmailIntervalMinutes + 5, 10);
+            try {
+                // Only try to get Gmail config if database is available
+                // Wrap in try-catch to prevent recursive logging if DB is unavailable
+                $gmailIntervalMinutes = 60; // Default value
+                if (\Illuminate\Support\Facades\Schema::hasTable('global_configs')) {
+                    $gmailIntervalMinutes = (int) GlobalConfig::getValue('gmail_sync_interval_minutes', 60);
+                }
+                $gmailHeartbeatMaxAge = max((int) ceil($gmailIntervalMinutes * 1.5), $gmailIntervalMinutes + 5, 10);
 
-            Health::checks([
-                DatabaseCheck::new()->connectionName(config('database.default')),
-                DatabaseSizeCheck::new()->failWhenSizeAboveGb(8),
-                CpuLoadCheck::new()
-                    ->failWhenLoadIsHigherInTheLastMinute(12.0)
-                    ->failWhenLoadIsHigherInTheLast5Minutes(10.0)
-                    ->failWhenLoadIsHigherInTheLast15Minutes(8.0),
-                UsedDiskSpaceCheck::new()
-                    ->warnWhenUsedSpaceIsAbovePercentage(75)
-                    ->failWhenUsedSpaceIsAbovePercentage(90),
-                GmailImportScheduleCheck::new()
-                    ->name('Gmail Import Schedule')
-                    ->cacheKey('health:schedule:gmail-import')
-                    ->heartbeatMaxAgeInMinutes($gmailHeartbeatMaxAge),
-            ]);
+                Health::checks([
+                    DatabaseCheck::new()->connectionName(config('database.default')),
+                    DatabaseSizeCheck::new()->failWhenSizeAboveGb(8),
+                    CpuLoadCheck::new()
+                        ->failWhenLoadIsHigherInTheLastMinute(12.0)
+                        ->failWhenLoadIsHigherInTheLast5Minutes(10.0)
+                        ->failWhenLoadIsHigherInTheLast15Minutes(8.0),
+                    UsedDiskSpaceCheck::new()
+                        ->warnWhenUsedSpaceIsAbovePercentage(75)
+                        ->failWhenUsedSpaceIsAbovePercentage(90),
+                    GmailImportScheduleCheck::new()
+                        ->name('Gmail Import Schedule')
+                        ->cacheKey('health:schedule:gmail-import')
+                        ->heartbeatMaxAgeInMinutes($gmailHeartbeatMaxAge),
+                ]);
+            } catch (\Exception $e) {
+                // Silently fail if database is not available during boot
+                // This prevents recursive logging errors
+            }
         }
         
     }

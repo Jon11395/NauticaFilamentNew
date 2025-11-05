@@ -19,6 +19,7 @@ use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Mail;
 
 class GlobalConfig extends Page implements HasForms, HasActions
 {
@@ -87,6 +88,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
                                     ->schema([
                                         ViewField::make('gmail_instructions')
                                             ->view('filament.pages.gmail-instructions')
+                                            ->dehydrated(false)
                                             ->columnSpan('full'),
 
                                         TextInput::make('gmail_client_id')
@@ -122,6 +124,14 @@ class GlobalConfig extends Page implements HasForms, HasActions
                                             ->dehydrated()
                                             ->columnSpan(1),
 
+                                        TextInput::make('gmail_from_name')
+                                            ->label('Nombre del Remitente')
+                                            ->helperText('El nombre que aparecerá como remitente en los emails enviados')
+                                            ->placeholder('Ej: Náutica')
+                                            ->default('Náutica')
+                                            ->dehydrated()
+                                            ->columnSpan(1),
+
                                         Select::make('gmail_sync_interval_minutes')
                                             ->label('Sincronización automática')
                                             ->options([
@@ -142,6 +152,14 @@ class GlobalConfig extends Page implements HasForms, HasActions
 
                                         ViewField::make('test_connection')
                                             ->view('filament.pages.gmail-test-button')
+                                            ->dehydrated(false)
+                                            ->columnSpan('full'),
+
+                                        ViewField::make('test_email')
+                                            ->label('')
+                                            ->view('filament.pages.gmail-test-email-button')
+                                            ->dehydrated(false)
+                                            ->hidden(false)
                                             ->columnSpan('full'),
                                     ])
                                     ->columns(2)
@@ -214,11 +232,12 @@ class GlobalConfig extends Page implements HasForms, HasActions
             'gmail_client_secret' => 'string',
             'gmail_refresh_token' => 'string',
             'gmail_user_email' => 'string',
+            'gmail_from_name' => 'string',
             'gmail_sync_interval_minutes' => 'integer',
         ];
 
         // Fields to exclude from saving (ViewField components like instructions and buttons)
-        $excludedFields = ['gmail_instructions', 'test_connection'];
+        $excludedFields = ['gmail_instructions', 'test_connection', 'test_email'];
 
         // Save each configuration to database
         foreach ($data as $key => $value) {
@@ -327,6 +346,112 @@ class GlobalConfig extends Page implements HasForms, HasActions
             Notification::make()
                 ->title('Error de conexión')
                 ->body('Ocurrió un error al probar la conexión: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    /**
+     * Send a test email to verify email configuration
+     */
+    public function sendTestEmail(): void
+    {
+        try {
+            $data = $this->form->getState();
+
+            // Check if Gmail email is configured
+            $testEmail = $data['gmail_user_email'] ?? GlobalConfigModel::getValue('gmail_user_email');
+            
+            if (empty($testEmail)) {
+                Notification::make()
+                    ->title('Email no configurado')
+                    ->body('Por favor, configure el correo electrónico de Gmail primero.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            // Temporarily save credentials if they're in the form
+            if (!empty($data['gmail_client_id']) && !empty($data['gmail_client_secret']) && !empty($data['gmail_refresh_token'])) {
+                GlobalConfigModel::setValue('gmail_client_id', $data['gmail_client_id'], 'string', 'Client ID de Gmail');
+                GlobalConfigModel::setValue('gmail_client_secret', $data['gmail_client_secret'], 'string', 'Client Secret de Gmail');
+                GlobalConfigModel::setValue('gmail_refresh_token', $data['gmail_refresh_token'], 'string', 'Refresh Token de Gmail');
+                GlobalConfigModel::setValue('gmail_user_email', $data['gmail_user_email'] ?? $testEmail, 'string', 'Email de usuario de Gmail');
+                
+                // Save from name if provided
+                if (!empty($data['gmail_from_name'])) {
+                    GlobalConfigModel::setValue('gmail_from_name', $data['gmail_from_name'], 'string', 'Nombre del Remitente de Gmail');
+                }
+            }
+
+            // Force synchronous sending for testing
+            $originalQueue = config('queue.default');
+            config(['queue.default' => 'sync']);
+
+            // Ensure the mail from address is set correctly
+            $fromEmail = $testEmail;
+            // Get from name from GlobalConfig, fallback to config or default
+            $fromName = GlobalConfigModel::getValue('gmail_from_name') 
+                ?? config('mail.from.name', 'Náutica');
+            
+            // Ensure from name is not "Laravel" or empty which causes validation errors
+            if ($fromName === 'Laravel' || empty($fromName)) {
+                $fromName = 'Náutica';
+            }
+            
+            // Validate email address
+            if (!filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
+                Notification::make()
+                    ->title('Email Inválido')
+                    ->body('La dirección de correo electrónico configurada no es válida: ' . $fromEmail)
+                    ->danger()
+                    ->send();
+                return;
+            }
+            
+            // Temporarily set the mail from address
+            $originalFromAddress = config('mail.from.address');
+            $originalFromName = config('mail.from.name');
+            config(['mail.from.address' => $fromEmail]);
+            config(['mail.from.name' => $fromName]);
+
+            // Send test email - explicitly set from address to avoid validation issues
+            // Use mailer() to get a fresh instance with updated config
+            try {
+                Mail::mailer('gmail-api')->raw('Este es un correo de prueba enviado desde el sistema de configuración global. Si recibes este correo, significa que la configuración de Gmail OAuth está funcionando correctamente.', function ($message) use ($testEmail, $fromEmail, $fromName) {
+                    // Clear any existing from addresses first to avoid validation issues
+                    $message->getHeaders()->remove('from');
+                    
+                    // Ensure from address is set before any other operations
+                    // Double-check that $fromEmail is actually an email address
+                    if (!filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
+                        throw new \InvalidArgumentException('Invalid from email address: ' . $fromEmail);
+                    }
+                    
+                    // Set from address - email first, name second
+                    $message->from($fromEmail, $fromName);
+                    $message->to($testEmail);
+                    $message->subject('Email de Prueba - Configuración Gmail OAuth');
+                });
+            } finally {
+                // Restore original config
+                config(['mail.from.address' => $originalFromAddress]);
+                config(['mail.from.name' => $originalFromName]);
+            }
+
+            // Restore original queue setting
+            config(['queue.default' => $originalQueue]);
+
+            Notification::make()
+                ->title('Email de Prueba Enviado')
+                ->body('El email de prueba ha sido enviado exitosamente a: ' . $testEmail . '. Verifica tu bandeja de entrada y carpeta de spam.')
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error al Enviar Email')
+                ->body('No se pudo enviar el email de prueba: ' . $e->getMessage())
                 ->danger()
                 ->send();
         }

@@ -20,7 +20,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Rmsramos\Activitylog\ActivitylogPlugin;
 use App\Filament\Pages\Dashboard;
-use Joaopaulolndev\FilamentGeneralSettings\FilamentGeneralSettingsPlugin;
 use ShuvroRoy\FilamentSpatieLaravelHealth\FilamentSpatieLaravelHealthPlugin;
 use App\Filament\Pages\HealthCheckResults;
 
@@ -82,12 +81,6 @@ class AdminPanelProvider extends PanelProvider
                     ),
             ])
             ->plugins([
-                FilamentGeneralSettingsPlugin::make()
-                    ->canAccess(fn () => auth()->user()?->hasAnyRole(['admin', 'super_admin']))
-                    ->setSort(1)
-                    ->setNavigationGroup('Configuraciones')
-                    ->setTitle('Configuraciones Generales')
-                    ->setNavigationLabel('General'),
                 FilamentSpatieLaravelHealthPlugin::make()
                     ->usingPage(HealthCheckResults::class),
                 ])

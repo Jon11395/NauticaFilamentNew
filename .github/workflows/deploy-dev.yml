@@ -35,6 +35,9 @@ jobs:
                 "php artisan route:cache",
                 "php artisan view:cache",
                 "php artisan optimize",
+                "php artisan queue:restart",
+                "supervisorctl restart laravel-worker:* || echo 'Queue worker not managed by supervisor'",
+                "systemctl restart laravel-worker || echo 'Queue worker not managed by systemd'",
                 "php artisan schedule:run",
                 "restart",
                 "php artisan vendor:publish --tag=livewire:assets --force"
