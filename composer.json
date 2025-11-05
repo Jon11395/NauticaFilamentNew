@@ -57,6 +57,9 @@
     },
     "scripts": {
         "post-autoload-dump": [
+            "@php -r \"file_exists('bootstrap/cache/services.php') && unlink('bootstrap/cache/services.php');\"",
+            "@php -r \"file_exists('bootstrap/cache/packages.php') && unlink('bootstrap/cache/packages.php');\"",
+            "@php -r \"\\$dir = 'bootstrap/cache/filament'; if (is_dir(\\$dir)) { \\$files = new \\RecursiveIteratorIterator(new \\RecursiveDirectoryIterator(\\$dir, \\RecursiveDirectoryIterator::SKIP_DOTS), \\RecursiveIteratorIterator::CHILD_FIRST); foreach (\\$files as \\$fileinfo) { \\$todo = (\\$fileinfo->isDir() ? 'rmdir' : 'unlink'); @\\$todo(\\$fileinfo->getRealPath()); } @rmdir(\\$dir); }\"",
             "@php artisan config:clear",
             "@php artisan clear-compiled",
             "@php artisan package:discover --ansi",
