@@ -184,6 +184,8 @@ class GmailApiTransport extends AbstractTransport implements Stringable
             }
             
             // Convert to string for Gmail API
+            // Symfony Mime handles UTF-8 encoding automatically, including subject encoding
+            // Do NOT manipulate the subject - let Symfony handle it completely
             $messageString = $originalMessage->toString();
             
             // Encode the message in base64url format

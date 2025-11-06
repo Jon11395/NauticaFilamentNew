@@ -91,7 +91,7 @@ class UserResource extends Resource
                     ->visible(fn ($record) => $record->id !== 1 && $record->email !== 'admin@admin.com'),
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn ($record) => $record->id !== 1 && $record->email !== 'admin@admin.com'),
-                Action::make('resetPassword')
+                /*Action::make('resetPassword')
                     ->label('Restaurar contraseña')
                     ->color('warning')
                     ->icon('heroicon-o-arrow-path') 
@@ -109,7 +109,7 @@ class UserResource extends Resource
                         ->success()
                         ->title("Contraseña restaurada para el usuario {$record->name}")
                         ->send();
-                    }),
+                    }),*/
                 ActivityLogTimelineTableAction::make('Activities')
                     ->label('Actividad')
                     ->color('info')

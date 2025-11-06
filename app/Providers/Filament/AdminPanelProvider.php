@@ -22,6 +22,7 @@ use Rmsramos\Activitylog\ActivitylogPlugin;
 use App\Filament\Pages\Dashboard;
 use ShuvroRoy\FilamentSpatieLaravelHealth\FilamentSpatieLaravelHealthPlugin;
 use App\Filament\Pages\HealthCheckResults;
+use App\Filament\Pages\Auth\RequestPasswordReset;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -32,7 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->passwordReset()
+            ->passwordReset(RequestPasswordReset::class)
             ->profile()
             ->authGuard('web')
             ->brandLogo(asset('images/logo1.png'))
