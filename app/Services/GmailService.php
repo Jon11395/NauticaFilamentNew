@@ -51,9 +51,6 @@ class GmailService
                 try {
                     if ($this->client->isAccessTokenExpired()) {
                         $this->client->fetchAccessTokenWithRefreshToken();
-                        Log::info('Successfully fetched access token using refresh token');
-                    } else {
-                        Log::info('Access token is still valid');
                     }
                 } catch (\Exception $e) {
                     Log::warning('Could not fetch access token: ' . $e->getMessage() . '. The refresh token may be invalid.');
@@ -64,12 +61,69 @@ class GmailService
 
             $this->service = new Google_Service_Gmail($this->client);
 
-            Log::info('Gmail client initialized successfully');
             return true;
         } catch (\Exception $e) {
             Log::error('Failed to initialize Gmail client: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Initialize Gmail client with send permissions (for sending emails)
+     */
+    public function initializeForSending(): bool
+    {
+        try {
+            $config = $this->getGmailConfig();
+
+            if (!$config || !isset($config['gmail_client_id']) || !isset($config['gmail_client_secret'])) {
+                Log::error('Gmail configuration is incomplete');
+                return false;
+            }
+
+            $this->client = new Google_Client();
+            $this->client->setClientId($config['gmail_client_id']);
+            $this->client->setClientSecret($config['gmail_client_secret']);
+            $this->client->setAccessType('offline');
+            $this->client->setPrompt('select_account consent');
+
+            // Set up OAuth 2.0 scopes for reading AND sending Gmail
+            $this->client->addScope(Google_Service_Gmail::GMAIL_READONLY);
+            $this->client->addScope(Google_Service_Gmail::GMAIL_SEND);
+
+            // Set refresh token if available
+            if (isset($config['gmail_refresh_token']) && !empty($config['gmail_refresh_token'])) {
+                $tokenData = [
+                    'access_token' => '',
+                    'refresh_token' => $config['gmail_refresh_token'],
+                    'created' => time() - 3600,
+                    'expires_in' => 3600,
+                ];
+                $this->client->setAccessToken($tokenData);
+                
+                try {
+                    if ($this->client->isAccessTokenExpired()) {
+                        $this->client->fetchAccessTokenWithRefreshToken();
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Could not fetch access token: ' . $e->getMessage() . '. You may need to regenerate refresh token with GMAIL_SEND scope.');
+                }
+            }
+
+            $this->service = new Google_Service_Gmail($this->client);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to initialize Gmail client for sending: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get the Google Client instance
+     */
+    public function getClient(): ?Google_Client
+    {
+        return $this->client;
     }
 
     /**
@@ -111,10 +165,8 @@ class GmailService
 
         // Refresh the access token if it's expired
         if ($this->client->isAccessTokenExpired()) {
-            Log::info('Access token expired, refreshing...');
             try {
                 $this->client->fetchAccessTokenWithRefreshToken();
-                Log::info('Token refreshed successfully');
             } catch (\Exception $e) {
                 Log::error('Failed to refresh token: ' . $e->getMessage());
                 throw new \Exception('Failed to refresh access token. Invalid credentials.');
@@ -301,9 +353,7 @@ class GmailService
         try {
             // Refresh the access token if it's expired
             if ($this->client->isAccessTokenExpired()) {
-                Log::info('Access token expired, refreshing...');
                 $this->client->fetchAccessTokenWithRefreshToken();
-                Log::info('Token refreshed successfully');
             }
             
             $userEmail = $this->getGmailConfig()['gmail_user_email'] ?? 'me';

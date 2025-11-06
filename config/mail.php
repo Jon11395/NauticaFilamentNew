@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'gmail-api'),
 
     /*
     |--------------------------------------------------------------------------
@@ -47,6 +47,11 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
+        'gmail-api' => [
+            'transport' => 'gmail-api',
+            // Uses OAuth credentials from GlobalConfig (gmail_client_id, gmail_client_secret, gmail_refresh_token)
         ],
 
         'ses' => [
@@ -110,7 +115,7 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', 'Example'),
+        'name' => env('MAIL_FROM_NAME', 'Náutica'),
     ],
 
 ];
