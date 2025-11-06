@@ -127,6 +127,37 @@ php artisan tinker
 >>> exit
 ```
 
+**CRÍTICO: Configura el mailer para usar Gmail API**
+
+Antes de configurar el queue worker, asegúrate de que el mailer esté configurado para usar Gmail API:
+
+```bash
+# Verifica la configuración actual
+grep MAIL_MAILER .env
+
+# Si no está configurado o está como 'log', cámbialo a 'gmail-api'
+sed -i 's/^MAIL_MAILER=.*/MAIL_MAILER=gmail-api/' .env
+
+# O si no existe la línea, agrégalo
+if ! grep -q "^MAIL_MAILER=" .env; then
+    echo "MAIL_MAILER=gmail-api" >> .env
+fi
+
+# Verifica que se cambió correctamente
+grep MAIL_MAILER .env
+
+# Limpia la caché de configuración
+php artisan config:clear
+php artisan cache:clear
+
+# Verifica que está correcto
+php artisan tinker
+>>> config('mail.default');
+>>> exit
+```
+
+Debe retornar `"gmail-api"`. Si retorna `"log"`, los emails se guardarán en los logs en lugar de enviarse.
+
 CONFIGURACIÓN DEL QUEUE WORKER CON CRON
 
 Esta opción ejecuta el worker cada minuto procesando todos los jobs pendientes. 
@@ -208,8 +239,13 @@ VERIFICACIÓN Y TROUBLESHOOTING
    Debe mostrar la línea de cron. Si no muestra nada, ejecuta: `./scripts/setup-queue-worker.sh`
 
    **Paso 4: Ejecuta el script de diagnóstico (recomendado)**
+   Dale permisos de ejecución
    ```bash
-   ./scripts/diagnose-queue.sh
+   chmod +x scripts/diagnose-queue.sh
+   ```
+
+   ```bash
+   bash ./scripts/diagnose-queue.sh
    ```
    Este script verificará automáticamente todos los puntos de configuración y te mostrará qué está mal.
 
@@ -234,16 +270,28 @@ VERIFICACIÓN Y TROUBLESHOOTING
    tail -n 50 storage/logs/queue.log
    
    # Logs generales de Laravel (busca errores de Gmail)
-   tail -n 100 storage/logs/laravel.log | grep -i "gmail\|error\|exception\|failed"
+   tail -n 200 storage/logs/laravel.log | grep -i "gmail\|error\|exception\|failed"
    
-   # O ver todos los logs recientes
-   tail -n 100 storage/logs/laravel.log
+   # O ver todos los logs recientes (últimas 200 líneas)
+   tail -n 200 storage/logs/laravel.log
+   
+   # Buscar específicamente errores relacionados con el transporte Gmail
+   tail -n 500 storage/logs/laravel.log | grep -A 10 -B 10 -i "gmail\|GmailApiTransport\|transport"
    ```
    Busca errores relacionados con Gmail, autenticación, o permisos. 
    
    **IMPORTANTE**: Si ves `Filament\Notifications\Auth\ResetPassword` en los logs pero el email no se envía, 
    el problema puede ser que Filament está usando su propia notificación que no está configurada 
    para usar el transporte Gmail API. Verifica los logs de Laravel para ver si hay errores al enviar.
+   
+   **Si no encuentras errores en los logs**, prueba enviar un email de prueba directamente:
+   ```bash
+   php artisan tinker
+   >>> $user = \App\Models\User::first();
+   >>> $user->notify(new \App\Notifications\ResetPasswordNotification('test-token'));
+   >>> exit
+   ```
+   Esto debería crear un job y luego puedes procesarlo manualmente para ver el error.
 
    **Paso 8: Verifica la configuración de Gmail**
    ```bash
@@ -257,6 +305,21 @@ VERIFICACIÓN Y TROUBLESHOOTING
    Todos estos valores deben estar configurados. El `gmail_refresh_token` debe tener el scope `GMAIL_SEND`.
 
 4. Problemas comunes y soluciones:
+
+   **Problema: Los emails se loguean pero no se envían**
+   - Verifica que el mailer esté configurado como `gmail-api`:
+     ```bash
+     php artisan tinker
+     >>> config('mail.default');
+     >>> exit
+     ```
+     Debe retornar `"gmail-api"`. Si retorna `"log"`, los emails se guardarán en los logs.
+   - Si está como `"log"`, configúralo:
+     ```bash
+     sed -i 's/^MAIL_MAILER=.*/MAIL_MAILER=gmail-api/' .env
+     php artisan config:clear
+     ```
+   - Verifica que la configuración de Gmail esté correcta (ver Paso 8 arriba)
 
    **Problema: El job se crea pero no se procesa**
    - Verifica que cron está ejecutándose: espera 1-2 minutos después de crear el job
