@@ -375,6 +375,3 @@ VERIFICACIÓN Y TROUBLESHOOTING
    tail -f storage/logs/queue.log
    tail -f storage/logs/laravel.log
    ```
-
-
-
