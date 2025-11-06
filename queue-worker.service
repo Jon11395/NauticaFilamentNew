@@ -1,0 +1,15 @@
+[Unit]
+Description=Laravel Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/Users/jvasquez1/Desktop/Mine/NauticaFilamentNew
+ExecStart=/usr/bin/php /Users/jvasquez1/Desktop/Mine/NauticaFilamentNew/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
