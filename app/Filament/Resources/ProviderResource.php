@@ -36,6 +36,7 @@ class ProviderResource extends Resource
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationLabel = 'Proveedores';
     protected static ?string $breadcrumb = "Proveedores";
+    protected static ?string $navigationIcon = 'heroicon-o-building-office';
 
 
 

@@ -22,6 +22,7 @@ class ExpenseTypeResource extends Resource
     protected static ?int $navigationSort = 4;
     protected static ?string $navigationLabel = 'Tipos de gastos';
     protected static ?string $breadcrumb = "Tipos de gastos";
+    protected static ?string $navigationIcon = 'heroicon-o-tag';
 
     public static function form(Form $form): Form
     {
