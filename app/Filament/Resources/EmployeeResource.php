@@ -38,7 +38,7 @@ class EmployeeResource extends Resource
     protected static ?int $navigationSort = 3;
 
     //cambia el icono de del tab del sidebar: https://blade-ui-kit.com/blade-icons?set=1#search
-    //protected static ?string $navigationIcon = 'heroicon-m-users';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
     //agrega un label al tab en el sidebar
     protected static ?string $navigationLabel = 'Empleados';

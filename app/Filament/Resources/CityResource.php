@@ -21,6 +21,7 @@ class CityResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationLabel = 'Ciudades';
     protected static ?string $breadcrumb = "Ciudades";
+    protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
 
 
     public static function form(Form $form): Form
