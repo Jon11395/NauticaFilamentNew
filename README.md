@@ -377,20 +377,4 @@ VERIFICACIÓN Y TROUBLESHOOTING
    ```
 
 
-NOTAS IMPORTANTES:
-
-- El worker se ejecuta automáticamente cada minuto mediante cron
-- Si los jobs no se procesan, verifica que la entrada de cron esté activa: `crontab -l`
-- El parámetro `--stop-when-empty` asegura que el worker se detenga después de procesar todos los jobs, evitando procesos duplicados
-- Los logs se guardan en `storage/logs/queue.log` para monitorear el funcionamiento
-- El parámetro `--tries=3` (configurado en el código) hace que los jobs se reintenten hasta 3 veces si fallan
-
-
-
---------------------------------------------------------------------------
-SI DA ERROR 419 - CORRER EN EL SERVIDOR
---------------------------------------------------------------------------
-
-php artisan vendor:publish --tag=livewire:assets --force
-
 
