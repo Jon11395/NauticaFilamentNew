@@ -8,6 +8,7 @@ use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use App\Models\Expense;
 use App\Models\Income;
 use App\Models\Project;
+use App\Models\Employee;
 
 class MonthlyFinancialSummary extends BaseWidget
 {
@@ -76,6 +77,9 @@ class MonthlyFinancialSummary extends BaseWidget
             ->sortByDesc('profit')
             ->first();
 
+        // Employee & Resource Stats
+        $activeEmployees = Employee::where('active', true)->count();
+
 
         return [
             Stat::make('Ingresos del mes', '₡ '. number_format($thisMonthRevenue, 2))
@@ -102,6 +106,11 @@ class MonthlyFinancialSummary extends BaseWidget
                 ->description($mostProfitableProject ? '₡ ' . number_format($mostProfitableProject['profit'], 2) . ' (' . number_format($mostProfitableProject['profit_margin'], 1) . '% margen)' : 'No hay proyectos activos')
                 ->descriptionIcon($mostProfitableProject && $mostProfitableProject['profit'] >= 0 ? 'heroicon-o-arrow-trending-up' : 'heroicon-o-arrow-trending-down')
                 ->color($mostProfitableProject && $mostProfitableProject['profit'] >= 0 ? 'success' : 'danger'),
+
+            Stat::make('Empleados Activos', $activeEmployees)
+                ->description('Personal disponible')
+                ->descriptionIcon('heroicon-o-users')
+                ->color('info'),
         ];
     }
 
