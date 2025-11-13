@@ -1,4 +1,12 @@
 <div>
+    <style>
+        .employee-item:hover {
+            background-color: rgb(249, 250, 251) !important;
+        }
+        .dark .employee-item:hover {
+            background-color: rgb(55, 65, 81) !important;
+        }
+    </style>
 <x-filament-panels::page>
     <div class="space-y-6">
         <x-filament::section>
@@ -31,13 +39,13 @@
                 <x-slot name="heading">
                     <div class="flex items-center justify-between">
                         <div class="hidden sm:block">
-                            <h3 class="text-lg font-medium text-gray-900">{{ $this->getProjectName() }}</h3>
-                            <p class="text-sm text-gray-500">{{ $this->getCurrentPeriodName() }}</p>
+                            <h3 class="text-lg font-medium !text-gray-900 dark:!text-white">{{ $this->getProjectName() }}</h3>
+                            <p class="text-sm !text-gray-500 dark:!text-gray-400">{{ $this->getCurrentPeriodName() }}</p>
                         </div>
                         <div class="flex flex-col sm:flex-row sm:items-end gap-4">
                             <!-- Simple Date Range Picker -->
                             <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Rango de Fechas</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rango de Fechas</label>
                                 
                                 <!-- Calendar Display -->
                                 <div class="fi-input-wrp rounded-lg shadow-sm ring-1 ring-gray-950/10 dark:ring-white/20">
@@ -58,26 +66,26 @@
                                 </div>
                                 
                                 <!-- Calendar Widget -->
-                                <div id="calendarWidget" class="hidden absolute z-50 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-3 w-full max-w-xs" style="transition: opacity 0.2s ease-in-out;">
+                                <div id="calendarWidget" class="hidden absolute z-50 mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg p-3 w-full max-w-xs" style="transition: opacity 0.2s ease-in-out;">
                                     <div class="flex justify-between items-center mb-3">
-                                        <button type="button" onclick="previousMonth()" style="padding: 2px; border-radius: 4px; background: transparent; border: none; cursor: pointer;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor='transparent'">
-                                            <x-heroicon-o-chevron-left class="w-4 h-4" />
+                                        <button type="button" onclick="previousMonth()" class="p-0.5 rounded bg-transparent border-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                            <x-heroicon-o-chevron-left class="w-4 h-4 text-gray-600 dark:text-gray-400" />
                                         </button>
-                                        <h3 id="calendarMonth" style="font-size: 14px; font-weight: 600; color: #374151;"></h3>
-                                        <button type="button" onclick="nextMonth()" style="padding: 2px; border-radius: 4px; background: transparent; border: none; cursor: pointer;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor='transparent'">
-                                            <x-heroicon-o-chevron-right class="w-4 h-4" />
+                                        <h3 id="calendarMonth" class="text-gray-700 dark:text-gray-300" style="font-size: 14px; font-weight: 600;"></h3>
+                                        <button type="button" onclick="nextMonth()" class="p-0.5 rounded bg-transparent border-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                            <x-heroicon-o-chevron-right class="w-4 h-4 text-gray-600 dark:text-gray-400" />
                                         </button>
                                     </div>
 
                                     <!-- Calendar Grid -->
                                     <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 6px;">
-                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">D</div>
-                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">L</div>
-                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">M</div>
-                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">X</div>
-                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">J</div>
-                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">V</div>
-                                        <div style="text-align: center; font-size: 11px; font-weight: 500; color: #6b7280; padding: 4px 0;">S</div>
+                                        <div class="text-gray-600 dark:text-gray-400" style="text-align: center; font-size: 11px; font-weight: 500; padding: 4px 0;">D</div>
+                                        <div class="text-gray-600 dark:text-gray-400" style="text-align: center; font-size: 11px; font-weight: 500; padding: 4px 0;">L</div>
+                                        <div class="text-gray-600 dark:text-gray-400" style="text-align: center; font-size: 11px; font-weight: 500; padding: 4px 0;">M</div>
+                                        <div class="text-gray-600 dark:text-gray-400" style="text-align: center; font-size: 11px; font-weight: 500; padding: 4px 0;">X</div>
+                                        <div class="text-gray-600 dark:text-gray-400" style="text-align: center; font-size: 11px; font-weight: 500; padding: 4px 0;">J</div>
+                                        <div class="text-gray-600 dark:text-gray-400" style="text-align: center; font-size: 11px; font-weight: 500; padding: 4px 0;">V</div>
+                                        <div class="text-gray-600 dark:text-gray-400" style="text-align: center; font-size: 11px; font-weight: 500; padding: 4px 0;">S</div>
                                     </div>
 
                                     <div id="calendarDays" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;">
@@ -85,8 +93,8 @@
                                     </div>
                                     
                                     <!-- Calendar Actions -->
-                                    <div style="display: flex; justify-content: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                                        <div style="font-size: 11px; color: #6b7280; padding: 4px 0;">
+                                    <div class="border-t border-gray-200 dark:border-gray-700" style="display: flex; justify-content: center; margin-top: 12px; padding-top: 8px;">
+                                        <div class="text-gray-600 dark:text-gray-400" style="font-size: 11px; padding: 4px 0;">
                                             Haz clic en diferentes días para cambiar la selección
                                         </div>
                                     </div>
@@ -97,7 +105,7 @@
                                 <input type="hidden" wire:model.live="endDate" id="endDate" />
                                 
                                 <!-- Date Range Info -->
-                                <div class="text-xs text-gray-500 bg-blue-50 px-3 py-2 rounded-lg mt-2">
+                                <div class="text-xs text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-lg mt-2">
                                     <div class="flex items-center space-x-1">
                                         <x-heroicon-o-information-circle class="w-3 h-3" />
                                         <span>Haz clic en dos fechas para seleccionar un rango (máximo 31 días)</span>
@@ -105,7 +113,7 @@
                                 </div>
                                 
                                 <!-- Error Message -->
-                                <div id="dateRangeError" class="hidden text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg mt-2">
+                                <div id="dateRangeError" class="hidden text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-3 py-2 rounded-lg mt-2">
                                     <div class="flex items-center space-x-1">
                                         <x-heroicon-o-exclamation-triangle class="w-3 h-3" />
                                         <span>El rango de fechas debe ser máximo 31 días</span>
@@ -129,18 +137,18 @@
                     </div>
                 </x-slot>
                 
-                <div class="overflow-x-auto border border-gray-200 rounded-xl shadow-sm">
+                <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
                     <div class="min-w-full">
                         <!-- Employee Management Header -->
-                        <div class="bg-gray-50 border-b border-gray-200" style="width: calc(220px + {{ $this->getDaysInPeriod() }} * 65px);">
+                        <div class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" style="width: calc(220px + {{ $this->getDaysInPeriod() }} * 65px);">
                             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 p-4">
                                 <div class="flex-1">
-                                    <h4 class="text-lg font-semibold text-gray-900">Empleados del Proyecto</h4>
-                                    <p class="text-sm text-gray-500 mt-1">Gestiona los empleados asignados a este proyecto</p>
+                                    <h4 class="text-lg font-semibold !text-gray-900 dark:!text-white">Empleados del Proyecto</h4>
+                                    <p class="text-sm !text-gray-600 dark:!text-gray-400 mt-1">Gestiona los empleados asignados a este proyecto</p>
                                 </div>
                                 <div class="flex justify-start lg:justify-end">
                                     <div class="w-auto">
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Seleccionar Empleados
                                         </label>
                                         
@@ -162,7 +170,7 @@
                         <!-- Calendar Header -->
                         <div class="grid gap-0 mb-0 min-w-max" style="grid-template-columns: 220px repeat({{ $this->getDaysInPeriod() }}, 65px);">
                             <!-- Employee Name Column Header -->
-                            <div class="p-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-r border-gray-200 font-semibold text-sm text-gray-700 sticky left-0 z-10">
+                            <div class="p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-r border-gray-200 dark:border-gray-700 font-semibold text-sm text-gray-700 dark:text-gray-300 sticky left-0 z-10">
                                 <div class="flex items-center">
                                     <x-heroicon-o-user class="w-4 h-4 mr-2" />
                                     <span>Empleado</span>
@@ -174,92 +182,89 @@
                                     $isWeekend = $currentDate->isWeekend();
                                     $isToday = $currentDate->isToday();
                                 @endphp
-                                <div class="p-2 bg-gradient-to-b {{ $isWeekend ? 'from-red-50 to-red-100 text-red-700' : ($isToday ? 'from-blue-50 to-blue-100 text-blue-700' : 'from-gray-50 to-gray-100 text-gray-700') }} border-b border-r border-gray-200 text-center font-medium {{ $isToday ? 'font-bold' : '' }}">
-                                    <div class="text-xs opacity-75 hidden sm:block">{{ $currentDate->locale('es')->isoFormat('ddd') }}</div>
-                                    <div class="text-sm font-semibold hidden sm:block">{{ $currentDate->format('d') }}</div>
-                                    <div class="text-xs opacity-60 font-normal hidden lg:block">{{ $currentDate->locale('es')->isoFormat('MMM') }}</div>
+                                <div class="p-2 bg-gradient-to-b {{ $isWeekend ? 'from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30' : ($isToday ? 'from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30' : 'from-white to-gray-50 dark:from-gray-900 dark:to-gray-800') }} border-b border-r border-gray-200 dark:border-gray-700 text-center font-medium {{ $isToday ? 'font-bold' : '' }}">
+                                    <div class="text-xs {{ $isWeekend ? '!text-red-900 dark:!text-red-200 opacity-40 dark:opacity-50 font-normal' : ($isToday ? 'text-blue-700 dark:text-blue-300 opacity-75 dark:opacity-90 font-medium' : '!text-gray-900 dark:!text-white opacity-75 dark:opacity-90 font-bold') }} hidden sm:block">{{ $currentDate->locale('es')->isoFormat('ddd') }}</div>
+                                    <div class="text-sm {{ $isWeekend ? '!text-red-900 dark:!text-red-200 opacity-50 dark:opacity-60 font-semibold' : ($isToday ? 'text-blue-700 dark:text-blue-300 font-bold' : '!text-gray-900 dark:!text-white font-bold') }} hidden sm:block">{{ $currentDate->format('d') }}</div>
+                                    <div class="text-xs {{ $isWeekend ? '!text-red-900 dark:!text-red-200 opacity-35 dark:opacity-45 font-normal' : ($isToday ? 'text-blue-700 dark:text-blue-300 opacity-60 dark:opacity-80 font-medium' : '!text-gray-900 dark:!text-white opacity-60 dark:opacity-80 font-semibold') }} hidden lg:block">{{ $currentDate->locale('es')->isoFormat('MMM') }}</div>
                                     <!-- Mobile: Show day/month -->
-                                    <div class="text-xs opacity-75 sm:hidden">{{ $currentDate->locale('es')->isoFormat('ddd') }}</div>
-                                    <div class="text-xs font-medium sm:hidden">{{ $currentDate->format('d/m') }}</div>
+                                    <div class="text-xs {{ $isWeekend ? '!text-red-900 dark:!text-red-200 opacity-40 dark:opacity-50 font-normal' : ($isToday ? 'text-blue-700 dark:text-blue-300 opacity-75 dark:opacity-90 font-medium' : '!text-gray-900 dark:!text-white opacity-75 dark:opacity-90 font-bold') }} sm:hidden">{{ $currentDate->locale('es')->isoFormat('ddd') }}</div>
+                                    <div class="text-xs {{ $isWeekend ? '!text-red-900 dark:!text-red-200 opacity-50 dark:opacity-60 font-semibold' : ($isToday ? 'text-blue-700 dark:text-blue-300 font-bold' : '!text-gray-900 dark:!text-white font-bold') }} sm:hidden">{{ $currentDate->format('d/m') }}</div>
                                 </div>
                             @endforeach
                         </div>
                         
                         <!-- Calendar Body -->
                         @foreach($this->getProjectEmployees() as $employee)
-                            <div class="group grid gap-0 border-b border-gray-200 hover:bg-gray-50 min-w-max" style="grid-template-columns: 220px repeat({{ $this->getDaysInPeriod() }}, 65px);">
+                            <div class="group grid gap-0 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 min-w-max" style="grid-template-columns: 220px repeat({{ $this->getDaysInPeriod() }}, 65px);">
                                 <!-- Employee Name -->
-                                <div class="p-4 bg-white border-r border-gray-200 text-sm font-medium text-gray-900 sticky left-0 z-10 hover:bg-gray-50 transition-colors">
+                                <div class="p-4 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 text-sm font-medium !text-gray-900 dark:!text-white sticky left-0 z-10 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-0">
                                         @php
                                             $totals = $this->getEmployeeTotalsForPeriod($employee->id);
                                         @endphp
                                         
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center space-x-2">
-                                               
-                                                <div class="min-w-0 flex-1">
-                                                    <div class="truncate text-sm font-semibold text-gray-900">{{ $employee->name }}</div>
-                                                    <div class="text-xs mt-0.5 space-y-0.5">
-                                                        @if($employee->hourly_salary && $employee->hourly_salary > 0)
-                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style="background-color: #dcfce7; color: #166534;">
-                                                                ₡{{ number_format($employee->hourly_salary, 2) }}/h
-                                                            </span>
-                                                        @else
-                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style="background-color: #fee2e2; color: #dc2626;">
-                                                                Sin salario
-                                                            </span>
-                                                        @endif
-                                                        
-                                                        
-                                                    </div>
+                                        <div class="flex-1 min-w-0 flex items-start justify-between gap-2">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="truncate text-sm font-semibold !text-gray-900 dark:!text-white" style="color: rgb(17, 24, 39) !important;" x-data x-bind:style="$store.theme === 'dark' ? 'color: rgb(255, 255, 255) !important;' : 'color: rgb(17, 24, 39) !important;'">{{ $employee->name }}</div>
+                                                </div>
+                                                <div class="mt-1 mb-2">
+                                                    @if($employee->hourly_salary && $employee->hourly_salary > 0)
+                                                        <x-filament::badge color="success" size="sm">
+                                                            ₡{{ number_format($employee->hourly_salary, 2) }}/h
+                                                        </x-filament::badge>
+                                                    @else
+                                                        <x-filament::badge color="danger" size="sm" class="mb-2">
+                                                            Sin salario
+                                                        </x-filament::badge>
+                                                    @endif
                                                 </div>
                                             </div>
+                                            <button
+                                                wire:click="removeEmployeeFromProject({{ $employee->id }})"
+                                                class="flex-shrink-0 transition-colors hover:opacity-75 mt-0.5"
+                                                style="color: #dc2626;"
+                                                title="Remover del proyecto"
+                                            >
+                                                <x-heroicon-o-trash class="w-4 h-4" />
+                                            </button>
                                         </div>
-                                        <button
-                                            wire:click="removeEmployeeFromProject({{ $employee->id }})"
-                                            class="self-center lg:self-end transition-colors"
-                                            style="color: #dc2626;"
-                                            title="Remover del proyecto"
-                                        >
-                                            <x-heroicon-o-trash class="w-4 h-4" />
-                                        </button>
                                     </div>
                                     
                                     
                                     
                                     <!-- Desktop: Show full details in compact grid layout -->
-                                    <div class="mt-0 hidden lg:block">
-                                        <div class="grid grid-cols-2 gap-0.5 text-xs">
+                                    <div class="mt-2 hidden lg:block">
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Regular:</span>
-                                                <span class="font-medium {{ $totals['regular_hours'] > 0 ? 'text-green-600' : 'text-gray-400' }}">
+                                                <span class="text-gray-600 dark:text-gray-400">Regular:</span>
+                                                <span class="font-medium {{ $totals['regular_hours'] > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500' }}">
                                                     {{ number_format($totals['regular_hours'], 1) }}h
                                                 </span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Extra:</span>
-                                                <span class="font-medium {{ $totals['extra_hours'] > 0 ? 'text-orange-600' : 'text-gray-400' }}">
+                                                <span class="text-gray-600 dark:text-gray-400">Extra:</span>
+                                                <span class="font-medium {{ $totals['extra_hours'] > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500' }}">
                                                     {{ number_format($totals['extra_hours'], 1) }}h
                                                 </span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Noche:</span>
-                                                <span class="font-medium {{ $totals['night_work_days'] > 0 ? 'text-purple-600' : 'text-gray-400' }}">
+                                                <span class="text-gray-600 dark:text-gray-400">Noche:</span>
+                                                <span class="font-medium {{ $totals['night_work_days'] > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500' }}">
                                                     {{ $totals['night_work_days'] }}d
                                                 </span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-gray-600">Total:</span>
-                                                <span class="font-bold text-primary-600">
+                                                <span class="text-gray-600 dark:text-gray-400">Total:</span>
+                                                <span class="font-bold text-primary-600 dark:text-primary-400">
                                                     {{ number_format($totals['total_hours'], 1) }}h
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="mt-0.5 pt-0.5 border-t border-gray-200">
+                                        <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                                             <div class="flex justify-between text-xs">
-                                                <span class="text-gray-700 font-medium">Costo:</span>
-                                                <span class="font-bold text-green-600">
+                                                <span class="text-gray-700 dark:text-gray-300 font-medium">Costo:</span>
+                                                <span class="font-bold text-green-600 dark:text-green-400">
                                                     ₡{{ number_format($totals['total_cost'], 0) }}
                                                 </span>
                                             </div>
@@ -268,15 +273,15 @@
 
                                     <!-- Mobile: Compact card view -->
                                     <div class="mt-0 lg:hidden">
-                                        <div class="bg-gray-50 rounded-md p-2 text-xs">
-                                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                        <div class="bg-gray-50 dark:bg-gray-800 rounded-md p-2 text-xs">
+                                            <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
                                                 <span>Reg:{{ number_format($totals['regular_hours'], 1) }}h</span>
                                                 <span>Ext:{{ number_format($totals['extra_hours'], 1) }}h</span>
                                                 <span>Noc:{{ $totals['night_work_days'] }}d</span>
                                             </div>
                                             <div class="flex justify-between items-center">
-                                                <span class="font-semibold text-blue-600">{{ number_format($totals['total_hours'], 1) }}h</span>
-                                                <span class="font-semibold text-green-600">Costo: ₡{{ number_format($totals['total_cost'], 0) }}</span>
+                                                <span class="font-semibold text-blue-600 dark:text-blue-400">{{ number_format($totals['total_hours'], 1) }}h</span>
+                                                <span class="font-semibold text-green-600 dark:text-green-400">Costo: ₡{{ number_format($totals['total_cost'], 0) }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -290,11 +295,11 @@
                                         $isToday = $currentDate->isToday();
                                         $hasHours = $timesheet && ($timesheet->hours > 0 || $timesheet->extra_hours > 0);
                                     @endphp
-                                    <div class="p-1 bg-white border-r border-gray-200 flex flex-col justify-center group hover:bg-gray-50 transition-colors {{ $isWeekend ? 'bg-red-25' : '' }} {{ $isToday ? 'bg-blue-25' : '' }} {{ $hasHours ? 'bg-green-25' : '' }}">
-                                        <div class="space-y-1">
+                                    <div class="p-1 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col justify-center group hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors {{ $isWeekend ? 'bg-red-25 dark:bg-red-900/10' : '' }} {{ $isToday ? 'bg-blue-25 dark:bg-blue-900/10' : '' }} {{ $hasHours ? 'bg-green-25 dark:bg-green-900/10' : '' }}">
+                                        <div class="space-y-2">
                                             <!-- Regular Hours -->
                                             <div class="space-y-1">
-                                                <div class="text-xs text-gray-500 text-center leading-none hidden lg:block font-medium">R</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 text-center leading-none hidden lg:block font-medium">R</div>
                                                 <input 
                                                     type="number" 
                                                     step="0.5" 
@@ -303,14 +308,14 @@
                                                     value="{{ $timesheet ? $timesheet->hours : '' }}"
                                                     id="regular-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}"
                                                     wire:change.debounce.300ms="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', $event.target.value, document.getElementById('extra-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, document.getElementById('night-work-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').checked)"
-                                                    class="w-full h-6 text-xs text-center border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-md px-1 py-1 transition-all {{ $timesheet && $timesheet->hours > 0 ? 'bg-green-50 border-green-300 text-green-700' : '' }} {{ $isWeekend ? 'bg-red-50 border-red-300' : '' }} {{ $isToday ? 'bg-blue-50 border-blue-300' : '' }} hover:shadow-sm"
+                                                    class="w-full h-6 text-xs text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-md px-1 py-1 transition-all {{ $timesheet && $timesheet->hours > 0 ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700 !text-green-700 dark:!text-green-300' : '!text-gray-900 dark:!text-white' }} {{ $isWeekend ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700' : '' }} {{ $isToday ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700' : '' }} hover:shadow-sm"
                                                     placeholder="0"
                                                     title="Horas regulares - {{ $currentDate->format('d/m/Y') }} - {{ $employee->name }}"
                                                 />
                                             </div>
                                             <!-- Extra Hours -->
                                             <div class="space-y-1">
-                                                <div class="text-xs text-gray-500 text-center leading-none hidden lg:block font-medium">E</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 text-center leading-none hidden lg:block font-medium">E</div>
                                                 <input 
                                                     type="number" 
                                                     step="0.5" 
@@ -319,14 +324,14 @@
                                                     value="{{ $timesheet ? $timesheet->extra_hours : '' }}"
                                                     id="extra-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}"
                                                     wire:change.debounce.300ms="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', document.getElementById('regular-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, $event.target.value, document.getElementById('night-work-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').checked)"
-                                                    class="w-full h-6 text-xs text-center border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-md px-1 py-1 transition-all {{ $timesheet && $timesheet->extra_hours > 0 ? 'bg-orange-50 border-orange-300 text-orange-700' : '' }} {{ $isWeekend ? 'bg-red-50 border-red-300' : '' }} {{ $isToday ? 'bg-blue-50 border-blue-300' : '' }} hover:shadow-sm"
+                                                    class="w-full h-6 text-xs text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-md px-1 py-1 transition-all {{ $timesheet && $timesheet->extra_hours > 0 ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-300 dark:border-orange-700 !text-orange-700 dark:!text-orange-300' : '!text-gray-900 dark:!text-white' }} {{ $isWeekend ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700' : '' }} {{ $isToday ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700' : '' }} hover:shadow-sm"
                                                     placeholder="0"
                                                     title="Horas extra - {{ $currentDate->format('d/m/Y') }} - {{ $employee->name }}"
                                                 />
                                             </div>
                                             <!-- Night Work Checkbox -->
                                             <div class="space-y-1">
-                                                <div class="text-xs text-gray-500 text-center leading-none hidden lg:block font-medium">
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 text-center leading-none hidden lg:block font-medium">
                                                     N
                                                 </div>
                                                 <div class="flex items-center justify-center">
@@ -335,7 +340,7 @@
                                                         id="night-work-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}"
                                                         {{ $timesheet && $timesheet->night_work ? 'checked' : '' }}
                                                         wire:change="updateTimesheet({{ $employee->id }}, '{{ $currentDate->format('Y-m-d') }}', document.getElementById('regular-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, document.getElementById('extra-hours-{{ $employee->id }}-{{ $currentDate->format('Y-m-d') }}').value, $event.target.checked)"
-                                                        class="w-4 h-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded transition-all hover:scale-110"
+                                                        class="w-4 h-4 text-primary-600 dark:text-primary-500 focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded transition-all hover:scale-110"
                                                         title="Trabajo nocturno - {{ $currentDate->format('d/m/Y') }} - {{ $employee->name }}"
                                                     />
                                                 </div>
@@ -347,17 +352,17 @@
                         @endforeach
                         
                         @if($this->getProjectEmployees()->count() == 0)
-                            <div class="text-center py-16 bg-white border-t border-gray-200" style="margin-top: 64px; margin-bottom: 64px;">
+                            <div class="text-center py-16 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700" style="margin-top: 64px; margin-bottom: 64px;">
                                 <div class="max-w-md mx-auto px-4">
-                                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <x-heroicon-o-users class="w-8 h-8 text-blue-600" />
+                                    <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <x-heroicon-o-users class="w-8 h-8 text-blue-600 dark:text-blue-400" />
                                     </div>
-                                    <h5 class="text-xl font-semibold text-gray-900 mb-3">No hay empleados asignados</h5>
-                                    <p class="text-gray-600 mb-8 leading-relaxed">Selecciona empleados de la lista para agregarlos al proyecto y comenzar a registrar sus horas</p>
+                                    <h5 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">No hay empleados asignados</h5>
+                                    <p class="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">Selecciona empleados de la lista para agregarlos al proyecto y comenzar a registrar sus horas</p>
                                     
-                                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                        <div class="flex items-center justify-center space-x-2 text-sm text-gray-600">
-                                            <x-heroicon-o-light-bulb class="w-4 h-4 text-yellow-500" />
+                                    <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                                            <x-heroicon-o-light-bulb class="w-4 h-4 text-yellow-500 dark:text-yellow-400" />
                                             <span>Usa el botón "Agregar Empleados" para agregar trabajadores</span>
                                         </div>
                                     </div>
@@ -370,15 +375,15 @@
                 
                 <!-- Summary Section -->
                 <div class="mt-8">
-                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 shadow-sm">
                         <div class="flex items-center justify-between mb-6">
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Resumen del Período</h3>
-                                <p class="text-sm text-gray-600 mt-1">Estadísticas del período seleccionado</p>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Resumen del Período</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Estadísticas del período seleccionado</p>
                             </div>
                             <div class="hidden sm:block">
-                                <div class="flex items-center space-x-2 text-sm text-gray-500">
-                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                                    <div class="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
                                     <span>Período activo</span>
                                 </div>
                             </div>
@@ -386,57 +391,57 @@
                         
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <!-- Total Hours -->
-                            <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-600">Horas Totales</p>
-                                        <p class="text-2xl font-bold text-blue-600 mt-1">{{ $this->getTotalHoursForPeriod() }}</p>
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Horas Totales</p>
+                                        <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ $this->getTotalHoursForPeriod() }}</p>
                                     </div>
-                                    <div class="p-3 bg-blue-100 rounded-full">
-                                        <x-heroicon-o-clock class="w-6 h-6 text-blue-600" />
+                                    <div class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                                        <x-heroicon-o-clock class="w-6 h-6 text-blue-600 dark:text-blue-400" />
                                     </div>
                                 </div>
                                 <div class="mt-3 space-y-1">
                                     <div class="flex justify-between text-xs">
-                                        <span class="text-gray-500">Regulares:</span>
-                                        <span class="font-medium text-green-600">{{ number_format($this->getTotalRegularHoursForPeriod(), 1) }}h</span>
+                                        <span class="text-gray-500 dark:text-gray-400">Regulares:</span>
+                                        <span class="font-medium text-green-600 dark:text-green-400">{{ number_format($this->getTotalRegularHoursForPeriod(), 1) }}h</span>
                                     </div>
                                     <div class="flex justify-between text-xs">
-                                        <span class="text-gray-500">Extra:</span>
-                                        <span class="font-medium text-orange-600">{{ number_format($this->getTotalExtraHoursForPeriod(), 1) }}h</span>
+                                        <span class="text-gray-500 dark:text-gray-400">Extra:</span>
+                                        <span class="font-medium text-orange-600 dark:text-orange-400">{{ number_format($this->getTotalExtraHoursForPeriod(), 1) }}h</span>
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- Total Cost -->
-                            <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-600">Costo Total</p>
-                                        <p class="text-2xl font-bold text-green-600 mt-1">₡{{ number_format($this->getTotalCostForPeriod(), 0) }}</p>
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Costo Total</p>
+                                        <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">₡{{ number_format($this->getTotalCostForPeriod(), 0) }}</p>
                                     </div>
-                                    <div class="p-3 bg-green-100 rounded-full">
-                                        <x-heroicon-o-wallet class="w-6 h-6 text-green-600" />
+                                    <div class="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+                                        <x-heroicon-o-wallet class="w-6 h-6 text-green-600 dark:text-green-400" />
                                     </div>
                                 </div>
-                                <div class="mt-3 flex items-center text-xs text-gray-500">
+                                <div class="mt-3 flex items-center text-xs text-gray-500 dark:text-gray-400">
                                     <x-heroicon-o-banknotes class="w-3 h-3 mr-1" />
                                     <span>Salarios calculados</span>
                                 </div>
                             </div>
                             
                             <!-- Total Employees -->
-                            <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-600">Empleados</p>
-                                        <p class="text-2xl font-bold text-purple-600 mt-1">{{ $this->getProjectEmployees()->count() }}</p>
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Empleados</p>
+                                        <p class="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">{{ $this->getProjectEmployees()->count() }}</p>
                                     </div>
-                                    <div class="p-3 bg-purple-100 rounded-full">
-                                        <x-heroicon-o-users class="w-6 h-6 text-purple-600" />
+                                    <div class="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                                        <x-heroicon-o-users class="w-6 h-6 text-purple-600 dark:text-purple-400" />
                                     </div>
                                 </div>
-                                <div class="mt-3 flex items-center text-xs text-gray-500">
+                                <div class="mt-3 flex items-center text-xs text-gray-500 dark:text-gray-400">
                                     <x-heroicon-o-user-group class="w-3 h-3 mr-1" />
                                     <span>Asignados al proyecto</span>
                                 </div>
@@ -446,14 +451,14 @@
                 </div>
             </x-filament::section>
         @else
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <div class="text-center py-8">
-                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <x-heroicon-o-folder-open class="w-8 h-8 text-gray-400" />
+                    <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <x-heroicon-o-folder-open class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Selecciona un Proyecto</h3>
-                    <p class="text-gray-500 max-w-sm mx-auto text-sm">Elige un proyecto del menú desplegable para gestionar las horas trabajadas</p>
-                    <div class="mt-4 flex items-center justify-center space-x-2 text-xs text-gray-400">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Selecciona un Proyecto</h3>
+                    <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto text-sm">Elige un proyecto del menú desplegable para gestionar las horas trabajadas</p>
+                    <div class="mt-4 flex items-center justify-center space-x-2 text-xs text-gray-400 dark:text-gray-500">
                         <x-heroicon-o-arrow-up class="w-3 h-3" />
                         <span>Usa el selector de arriba</span>
                     </div>
@@ -465,11 +470,11 @@
 
 <x-filament::modal id="employee-selection-modal" width="sm" class="max-w-lg mx-auto" :key="$modalRefreshKey">
     <x-slot name="heading">
-        <div class="text-lg font-semibold text-gray-900">Seleccionar Empleados</div>
+        <div class="text-lg font-semibold text-gray-900 dark:text-white">Seleccionar Empleados</div>
     </x-slot>
     
     <x-slot name="description">
-        <div class="text-sm text-gray-600">Selecciona los empleados que deseas agregar al proyecto</div>
+        <div class="text-sm text-gray-600 dark:text-gray-400">Selecciona los empleados que deseas agregar al proyecto</div>
     </x-slot>
     
     <!-- Search Input -->
@@ -485,10 +490,10 @@
     </div>
     
     <!-- Employee List -->
-    <div class="max-h-80 overflow-y-auto border border-gray-200 rounded-lg">
+    <div class="max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
         @foreach($this->getFilteredEmployees() as $employee)
             <div 
-                class="flex px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors touch-manipulation"
+                class="employee-item flex px-3 py-3 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors touch-manipulation"
                 wire:click="toggleEmployeeSelection({{ $employee->id }})"
             >
                 <div class="flex items-center mr-4">
@@ -496,10 +501,10 @@
                         type="checkbox" 
                         {{ in_array($employee->id, $selectedEmployeesToAdd ?? []) ? 'checked' : '' }}
                         wire:click="toggleEmployeeSelection({{ $employee->id }})"
-                        class="w-4 h-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500 focus:ring-2 opacity-0 absolute"
+                        class="w-4 h-4 text-primary-600 dark:text-primary-500 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 focus:ring-2 opacity-0 absolute"
                         onclick="event.stopPropagation()"
                     />
-                    <div class="w-4 h-4 border border-gray-300 rounded flex items-center justify-center {{ in_array($employee->id, $selectedEmployeesToAdd ?? []) ? 'bg-primary-600 border-primary-600' : 'bg-white' }}">
+                    <div class="w-4 h-4 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center {{ in_array($employee->id, $selectedEmployeesToAdd ?? []) ? 'bg-primary-600 dark:bg-primary-500 border-primary-600 dark:border-primary-500' : 'bg-white dark:bg-gray-800' }}">
                         @if(in_array($employee->id, $selectedEmployeesToAdd ?? []))
                             <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
@@ -508,7 +513,7 @@
                     </div>
                 </div>
                 <div class="flex items-center min-w-0 flex-1">
-                    <div class="text-sm font-medium text-gray-900 truncate" style="margin-left: 8px;">{{ $employee->name }}</div>
+                    <div class="text-sm font-medium text-gray-900 dark:text-white truncate" style="margin-left: 8px;">{{ $employee->name }}</div>
                 </div>
             </div>
         @endforeach
@@ -530,21 +535,21 @@
 <x-filament::modal id="remove-employee-confirmation-modal" width="sm" class="max-w-lg mx-auto">
     <x-slot name="heading">
         <div class="flex items-center">
-            <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-500 mr-2 flex-shrink-0" />
-            <div class="text-lg font-semibold text-gray-900">Remover Empleado del Proyecto</div>
+            <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-500 dark:text-red-400 mr-2 flex-shrink-0" />
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">Remover Empleado del Proyecto</div>
         </div>
     </x-slot>
     
     <x-slot name="description">
         <div class="space-y-3">
-            <p class="text-sm lg:text-base text-gray-700">
+            <p class="text-sm lg:text-base text-gray-700 dark:text-gray-300">
                 ¿Estás seguro de que deseas remover a <strong>{{ $this->getEmployeeToRemoveName() }}</strong> del proyecto?
             </p>
             
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
                 <div class="flex flex-col sm:flex-row">
-                    <x-heroicon-o-information-circle class="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mb-2 sm:mb-0" />
-                    <div class="text-xs lg:text-sm text-yellow-700">
+                    <x-heroicon-o-information-circle class="w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-2 flex-shrink-0 mb-2 sm:mb-0" />
+                    <div class="text-xs lg:text-sm text-yellow-700 dark:text-yellow-300">
                         <p class="font-medium mb-1">Esta acción:</p>
                         <ul class="list-disc list-inside space-y-1">
                             <li>Removerá al empleado del proyecto</li>
@@ -592,6 +597,31 @@ const months = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
+
+// Check if dark mode is active
+function isDarkMode() {
+    return document.documentElement.classList.contains('dark') || 
+           (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+// Get colors based on theme
+function getThemeColors() {
+    const dark = isDarkMode();
+    return {
+        disabled: dark ? '#4b5563' : '#d1d5db',
+        hover: dark ? '#374151' : '#f3f4f6',
+        todayBg: dark ? '#78350f' : '#fef3c7',
+        todayColor: dark ? '#fbbf24' : '#92400e',
+        todayBorder: dark ? '#f59e0b' : '#f59e0b',
+        selectedBg: dark ? '#2563eb' : '#3b82f6',
+        rangeBg: dark ? '#1e3a8a' : '#bfdbfe',
+        rangeColor: dark ? '#93c5fd' : '#1e40af',
+        rangeHoverBg: dark ? '#3b82f6' : '#93c5fd',
+        rangeHoverColor: dark ? '#dbeafe' : '#1e3a8a',
+        previewBg: dark ? '#1e3a8a' : '#e0f2fe',
+        previewColor: dark ? '#93c5fd' : '#0369a1'
+    };
+}
 
 function toggleCalendar() {
     const calendar = document.getElementById('calendarWidget');
@@ -657,9 +687,11 @@ function generateCalendar() {
             }
         }
         
+        const colors = getThemeColors();
+        
         if (isDateDisabled) {
             // Disable dates that would create invalid ranges
-            dayElement.style.color = '#d1d5db';
+            dayElement.style.color = colors.disabled;
             dayElement.style.cursor = 'not-allowed';
             dayElement.style.backgroundColor = 'transparent';
             dayElement.classList.add('disabled');
@@ -667,20 +699,21 @@ function generateCalendar() {
             // Enable valid dates
             dayElement.addEventListener('click', () => selectDate(date));
             dayElement.addEventListener('mouseenter', function() {
-                // Check if this is a range date by looking at the current background color
-                const currentBg = this.style.backgroundColor;
+                const colors = getThemeColors();
+                // Check if this is a range date by looking at the current background color or class
+                const isRangeDate = this.classList.contains('range');
                 
                 // Enhanced hover for range dates - make them darker
-                if (currentBg === 'rgb(191, 219, 254)' || currentBg === '#bfdbfe') {
+                if (isRangeDate) {
                     // This is a range date, make it darker
-                    this.style.backgroundColor = '#93c5fd';
-                    this.style.color = '#1e3a8a';
+                    this.style.backgroundColor = colors.rangeHoverBg;
+                    this.style.color = colors.rangeHoverColor;
                     this.style.fontWeight = '600';
                     this.classList.add('range-hover');
                 } else if (!this.classList.contains('selected')) {
                     // Regular hover for non-selected dates (including today)
                     if (!this.classList.contains('today')) {
-                        this.style.backgroundColor = '#f3f4f6';
+                        this.style.backgroundColor = colors.hover;
                         this.classList.add('hovering');
                     }
                     
@@ -691,6 +724,7 @@ function generateCalendar() {
                 }
             });
             dayElement.addEventListener('mouseleave', function() {
+                const colors = getThemeColors();
                 if (this.classList.contains('hovering')) {
                     this.style.backgroundColor = 'transparent';
                     this.classList.remove('hovering');
@@ -698,8 +732,8 @@ function generateCalendar() {
                 
                 // Reset range hover effect
                 if (this.classList.contains('range-hover')) {
-                    this.style.backgroundColor = '#bfdbfe';
-                    this.style.color = '#1e40af';
+                    this.style.backgroundColor = colors.rangeBg;
+                    this.style.color = colors.rangeColor;
                     this.style.fontWeight = 'normal';
                     this.classList.remove('range-hover');
                 }
@@ -713,22 +747,25 @@ function generateCalendar() {
         
         // Highlight today
         if (date.getTime() === today.getTime()) {
-            dayElement.style.backgroundColor = '#fef3c7';
-            dayElement.style.color = '#92400e';
+            const colors = getThemeColors();
+            dayElement.style.backgroundColor = colors.todayBg;
+            dayElement.style.color = colors.todayColor;
             dayElement.style.fontWeight = '700';
-            dayElement.style.border = '2px solid #f59e0b';
+            dayElement.style.border = '2px solid ' + colors.todayBorder;
             dayElement.classList.add('today');
         }
 
         // Highlight selected dates
         if (selectedStartDate && date.getTime() === selectedStartDate.getTime()) {
-            dayElement.style.backgroundColor = '#3b82f6';
+            const colors = getThemeColors();
+            dayElement.style.backgroundColor = colors.selectedBg;
             dayElement.style.color = 'white';
             dayElement.style.fontWeight = '600';
             dayElement.classList.add('selected');
         }
         if (selectedEndDate && date.getTime() === selectedEndDate.getTime()) {
-            dayElement.style.backgroundColor = '#3b82f6';
+            const colors = getThemeColors();
+            dayElement.style.backgroundColor = colors.selectedBg;
             dayElement.style.color = 'white';
             dayElement.style.fontWeight = '600';
             dayElement.classList.add('selected');
@@ -738,8 +775,9 @@ function generateCalendar() {
         if (selectedStartDate && selectedEndDate) {
             if (date >= selectedStartDate && date <= selectedEndDate) {
                 if (date.getTime() !== selectedStartDate.getTime() && date.getTime() !== selectedEndDate.getTime()) {
-                    dayElement.style.backgroundColor = '#bfdbfe';
-                    dayElement.style.color = '#1e40af';
+                    const colors = getThemeColors();
+                    dayElement.style.backgroundColor = colors.rangeBg;
+                    dayElement.style.color = colors.rangeColor;
                     dayElement.classList.add('range');
                 }
             }
@@ -868,6 +906,8 @@ function showRangePreview(startDate, endDate) {
     // Clear any existing preview
     clearRangePreview();
     
+    const colors = getThemeColors();
+    
     // Determine the actual start and end dates
     const start = startDate < endDate ? startDate : endDate;
     const end = startDate < endDate ? endDate : startDate;
@@ -887,8 +927,8 @@ function showRangePreview(startDate, endDate) {
             if (date >= start && date <= end) {
                 // Don't override selected dates or today
                 if (!dayElement.classList.contains('selected') && !dayElement.classList.contains('today')) {
-                    dayElement.style.backgroundColor = '#e0f2fe';
-                    dayElement.style.color = '#0369a1';
+                    dayElement.style.backgroundColor = colors.previewBg;
+                    dayElement.style.color = colors.previewColor;
                     dayElement.classList.add('preview-range');
                 }
             }

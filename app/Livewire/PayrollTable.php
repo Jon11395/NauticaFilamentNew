@@ -43,6 +43,10 @@ class PayrollTable extends Component
             $salarioBase = ($totalHoursEmp * $hourlyRate) + ($totalExtraHoursEmp * $hourlyRate * 1.5) + ($totalNightDaysEmp * $nightWorkBonus);
             
             $this->employeeTotals[$employee->id] = [
+                'total_hours' => $totalHoursEmp,
+                'total_extra_hours' => $totalExtraHoursEmp,
+                'total_night_days' => $totalNightDaysEmp,
+                'hourly_rate' => $hourlyRate,
                 'salario_base' => $salarioBase,
                 'adicionales' => 0,
                 'rebajos' => 0,
