@@ -20,6 +20,8 @@ use Spatie\Health\Checks\Checks\BackupsCheck;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 use App\Models\GlobalConfig;
 use App\Health\Checks\GmailImportScheduleCheck;
+use App\Health\Checks\DiskSpaceCheck;
+use App\Health\Checks\DirectorySizeCheck;
 use App\Mail\Transports\GmailApiTransport;
 use Illuminate\Mail\MailManager;
 
@@ -92,9 +94,12 @@ class AppServiceProvider extends ServiceProvider
                         ->failWhenLoadIsHigherInTheLastMinute(12.0)
                         ->failWhenLoadIsHigherInTheLast5Minutes(10.0)
                         ->failWhenLoadIsHigherInTheLast15Minutes(8.0),
-                    UsedDiskSpaceCheck::new()
-                        ->warnWhenUsedSpaceIsAbovePercentage(75)
-                        ->failWhenUsedSpaceIsAbovePercentage(90),
+                    // Custom disk space check showing df -h results
+                    DiskSpaceCheck::new()
+                        ->name('Total server disk space'),
+                    // Directory size check using du -sh .
+                    DirectorySizeCheck::new()
+                        ->name('Project directory size'),
                     GmailImportScheduleCheck::new()
                         ->name('Gmail Import Schedule')
                         ->cacheKey('health:schedule:gmail-import')
