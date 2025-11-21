@@ -22,6 +22,13 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->name('health:queue-heartbeat');
 
+        // Delete old expense attachments - run monthly on the 1st at 2 AM
+        // Uses retention period from global_configs table (expense_attachment_retention_months)
+        $schedule->command('expenses:delete-old-attachments')
+            ->monthlyOn(1, '02:00')
+            ->name('expenses:delete-old-attachments')
+            ->withoutOverlapping();
+
         $interval = (int) GlobalConfig::getValue('gmail_sync_interval_minutes', 60);
 
         if ($interval < 60) {

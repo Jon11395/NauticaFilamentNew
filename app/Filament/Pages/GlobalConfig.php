@@ -165,6 +165,30 @@ class GlobalConfig extends Page implements HasForms, HasActions
                                     ->columns(2)
                                     ->compact(),
                             ]),
+
+                        Tabs\Tab::make('expenses')
+                            ->label('Gastos')
+                            ->icon('heroicon-o-document-text')
+                            ->schema([
+                                Section::make('Configuración de Adjuntos de Gastos')
+                                    ->description('Configuración para la eliminación automática de adjuntos de gastos antiguos')
+                                    ->schema([
+                                        Select::make('expense_attachment_retention_months')
+                                            ->label('Retención de Adjuntos')
+                                            ->options([
+                                                0 => 'No eliminar (Desactivado)',
+                                                3 => '3 meses',
+                                                6 => '6 meses',
+                                                12 => '1 año',
+                                                24 => '2 años',
+                                            ])
+                                            ->helperText('Los adjuntos de gastos más antiguos que este período serán eliminados automáticamente. Los gastos en sí no se eliminarán, solo sus archivos adjuntos. Selecciona "No eliminar" para desactivar la eliminación automática.')
+                                            ->default(12)
+                                            ->columnSpan(1),
+                                    ])
+                                    ->compact()
+                                    ->columns(1),
+                            ]),
                     ]),
             ])
             ->statePath('data');
@@ -234,6 +258,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
             'gmail_user_email' => 'string',
             'gmail_from_name' => 'string',
             'gmail_sync_interval_minutes' => 'integer',
+            'expense_attachment_retention_months' => 'integer',
         ];
 
         // Fields to exclude from saving (ViewField components like instructions and buttons)
@@ -271,6 +296,7 @@ class GlobalConfig extends Page implements HasForms, HasActions
             'gmail_refresh_token' => 'Refresh Token de Gmail para acceso API',
             'gmail_user_email' => 'Correo electrónico de cuenta de Gmail',
             'gmail_sync_interval_minutes' => 'Frecuencia (en minutos) para ejecutar la sincronización automática de Gmail',
+            'expense_attachment_retention_months' => 'Período de retención (en meses) para adjuntos de gastos antes de eliminación automática',
         ];
 
         return $descriptions[$key] ?? '';

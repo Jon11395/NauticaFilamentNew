@@ -250,4 +250,111 @@ class Expense extends Model
     public function getTipoGastoAttribute(): string { return $this->expenseType?->name ?? '';}
 
     public function getAdjuntoAttribute(): string { return $this->attachment ? 'Adjunto' : 'Adjunto eliminado';}
+
+    /**
+     * Delete attachments for expenses older than the configured retention period
+     * 
+     * @return array Statistics about the deletion process
+     */
+    public static function deleteOldAttachments(): array
+    {
+        // Get retention period from global config (default to 12 months / 1 year)
+        $retentionMonths = \App\Models\GlobalConfig::getValue('expense_attachment_retention_months', 12);
+        
+        // If retention is 0 or null, deletion is disabled
+        if (empty($retentionMonths) || $retentionMonths == 0) {
+            return [
+                'expenses_processed' => 0,
+                'attachments_deleted' => 0,
+                'files_deleted' => 0,
+                'files_skipped' => 0,
+                'message' => 'Eliminación automática de adjuntos desactivada',
+            ];
+        }
+        
+        $cutoffDate = now()->subMonths($retentionMonths);
+        $expensesProcessed = 0;
+        $attachmentsDeleted = 0;
+        $filesDeleted = 0;
+        $filesSkipped = 0;
+
+        // Get all expenses older than the retention period that have attachments
+        $oldExpenses = self::where('date', '<', $cutoffDate)
+            ->whereNotNull('attachment')
+            ->get();
+
+        foreach ($oldExpenses as $expense) {
+            $attachments = $expense->attachment;
+
+            // Normalize attachments to array
+            $attachmentPaths = [];
+            if (is_array($attachments)) {
+                $attachmentPaths = $attachments;
+            } else if (is_string($attachments) && !empty($attachments)) {
+                $decoded = json_decode($attachments, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $attachmentPaths = $decoded;
+                } else {
+                    $attachmentPaths = [$attachments];
+                }
+            }
+
+            if (empty($attachmentPaths)) {
+                continue;
+            }
+
+            $expensesProcessed++;
+            $attachmentsDeleted += count($attachmentPaths);
+
+            // Delete each attachment file
+            foreach ($attachmentPaths as $filePath) {
+                if (empty($filePath) || !is_string($filePath)) {
+                    continue;
+                }
+
+                // Clean the path
+                $cleanPath = ltrim($filePath, '/');
+                $cleanPath = preg_replace('#^storage/#', '', $cleanPath);
+
+                // Check if this file is used by any other expense
+                $isUsedByOtherExpense = self::where('id', '!=', $expense->id)
+                    ->where(function ($query) use ($cleanPath, $filePath) {
+                        $query->where('attachment', 'like', '%' . $cleanPath . '%')
+                            ->orWhere('attachment', 'like', '%' . $filePath . '%')
+                            ->orWhereJsonContains('attachment', $cleanPath)
+                            ->orWhereJsonContains('attachment', $filePath);
+                    })
+                    ->exists();
+
+                if (!$isUsedByOtherExpense) {
+                    // File is not used by any other expense, safe to delete
+                    if (Storage::disk('public')->exists($cleanPath)) {
+                        \Log::info('Deleting old expense attachment', [
+                            'expense_id' => $expense->id,
+                            'expense_date' => $expense->date,
+                            'file_path' => $cleanPath,
+                        ]);
+                        Storage::disk('public')->delete($cleanPath);
+                        $filesDeleted++;
+                    }
+                } else {
+                    \Log::info('Skipping deletion - file is used by other expense', [
+                        'expense_id' => $expense->id,
+                        'file_path' => $cleanPath,
+                    ]);
+                    $filesSkipped++;
+                }
+            }
+
+            // Clear the attachment field after deleting files
+            $expense->update(['attachment' => null]);
+        }
+
+        return [
+            'expenses_processed' => $expensesProcessed,
+            'attachments_deleted' => $attachmentsDeleted,
+            'files_deleted' => $filesDeleted,
+            'files_skipped' => $filesSkipped,
+        ];
+    }
 }

@@ -115,7 +115,7 @@ class ManageProjectExpenses extends ManageRelatedRecords
         return $form
             ->schema([
                 Forms\Components\Section::make('Asignación')
-                    ->description('Asigna este gasto a un proyecto y proveedor')
+                    ->description('Asigna este gasto a un proveedor')
                     ->schema([
                         Forms\Components\Grid::make(2)
                             ->schema([
@@ -125,7 +125,9 @@ class ManageProjectExpenses extends ManageRelatedRecords
                                     ->searchable()
                                     ->preload()
                                     ->required()
-                                    ->native(false),
+                                    ->native(false)
+                                    ->default(fn () => $this->record->id)
+                                    ->dehydrated(),
                                 Forms\Components\Select::make('provider_id')
                                     ->label('Proveedor')
                                     ->relationship(name: 'provider', titleAttribute: 'name')
