@@ -10,6 +10,8 @@ use App\Models\Provider;
 use App\Services\Receipts\XmlReceiptParser;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -96,7 +98,16 @@ class TemporalExpenseResource extends Resource
                                         ->toArray())
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, Get $get) {
+                                        // Update temporal flag when expense_type_id changes
+                                        if (!empty($get('project_id')) && !empty($get('expense_type_id'))) {
+                                            $set('temporal', false);
+                                        } else {
+                                            $set('temporal', true);
+                                        }
+                                    }),
                             ]),
                     ])
                     ->columns(1),
@@ -119,13 +130,25 @@ class TemporalExpenseResource extends Resource
                                     ->relationship('project', 'name')
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, Get $get) {
+                                        // Update temporal flag when project_id changes
+                                        if (!empty($get('project_id')) && !empty($get('expense_type_id'))) {
+                                            $set('temporal', false);
+                                        } else {
+                                            $set('temporal', true);
+                                        }
+                                    }),
                             ]),
                     ])
                     ->columns(1),
 
                 Forms\Components\Hidden::make('temporal')
-                    ->default(true),
+                    ->dehydrateStateUsing(function (Get $get) {
+                        // Set temporal to false if both project_id and expense_type_id are present
+                        return !empty($get('project_id')) && !empty($get('expense_type_id')) ? false : true;
+                    }),
             ]);
     }
 
