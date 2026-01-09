@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Filament\Notifications\Notification;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class TemporalExpenseResource extends Resource
 {
@@ -88,7 +89,7 @@ class TemporalExpenseResource extends Resource
                                     ->required()
                                     ->options([
                                         'paid' => 'Pagado',
-                                        'unpaid' => 'No pagado',
+                                        'unpaid' => 'Pendiente',
                                     ]),
                                 Forms\Components\Select::make('expense_type_id')
                                     ->label('Tipo de gasto')
@@ -259,7 +260,7 @@ class TemporalExpenseResource extends Resource
                             })
                             ->formatStateUsing(fn (string $state): string => match ($state) {
                                 'paid' => 'Pagado',
-                                'unpaid' => 'No pagado',
+                                'unpaid' => 'Pendiente',
                                 default => ucfirst($state),
                             })
                             ->searchable(),
@@ -461,8 +462,26 @@ class TemporalExpenseResource extends Resource
                             
                             $action->getLivewire()->dispatch('temporal-expenses-updated');
                             
-                            // Refresh the page to update navigation badge
-                            $action->getLivewire()->redirect(static::getUrl('index'));
+                            // Refresh the page to update navigation badge, preserving search state
+                            $livewire = $action->getLivewire();
+                            // Get query parameters from referer or current request
+                            $referer = request()->header('referer');
+                            if ($referer) {
+                                $parsedUrl = parse_url($referer);
+                                $queryString = $parsedUrl['query'] ?? '';
+                                $indexUrl = static::getUrl('index');
+                                if ($queryString) {
+                                    $indexUrl .= '?' . $queryString;
+                                }
+                            } else {
+                                // Fallback: try to get from request query
+                                $indexUrl = static::getUrl('index');
+                                $queryParams = request()->query();
+                                if (!empty($queryParams)) {
+                                    $indexUrl .= '?' . http_build_query($queryParams);
+                                }
+                            }
+                            $livewire->redirect($indexUrl);
                         } catch (\Throwable $e) {
                             Log::error('Error applying credit note to expense', [
                                 'credit_note_id' => $creditNote->id,
@@ -502,18 +521,45 @@ class TemporalExpenseResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required(),
+                        Forms\Components\Select::make('type')
+                            ->label('Tipo')
+                            ->options([
+                                'paid' => 'Pagado',
+                                'unpaid' => 'Pendiente',
+                            ])
+                            ->default(fn (Expense $record) => $record->type)
+                            ->required(),
                     ])
                     ->action(function (Expense $record, array $data, Tables\Actions\Action $action): void {
                         $record->update([
                             'project_id' => $data['project_id'],
                             'expense_type_id' => $data['expense_type_id'],
+                            'type' => $data['type'],
                             'temporal' => false,
                         ]);
 
                         $action->getLivewire()->dispatch('temporal-expenses-updated');
                         
-                        // Refresh the page to update navigation badge
-                        $action->getLivewire()->redirect(static::getUrl('index'));
+                        // Refresh the page to update navigation badge, preserving search state
+                        $livewire = $action->getLivewire();
+                        // Get query parameters from referer or current request
+                        $referer = request()->header('referer');
+                        if ($referer) {
+                            $parsedUrl = parse_url($referer);
+                            $queryString = $parsedUrl['query'] ?? '';
+                            $indexUrl = static::getUrl('index');
+                            if ($queryString) {
+                                $indexUrl .= '?' . $queryString;
+                            }
+                        } else {
+                            // Fallback: try to get from request query
+                            $indexUrl = static::getUrl('index');
+                            $queryParams = request()->query();
+                            if (!empty($queryParams)) {
+                                $indexUrl .= '?' . http_build_query($queryParams);
+                            }
+                        }
+                        $livewire->redirect($indexUrl);
                     })
                     ->color('success')
                     ->requiresConfirmation()
@@ -589,8 +635,26 @@ class TemporalExpenseResource extends Resource
 
                             $action->getLivewire()->dispatch('temporal-expenses-updated');
                             
-                            // Refresh the page to update navigation badge
-                            $action->getLivewire()->redirect(static::getUrl('index'));
+                            // Refresh the page to update navigation badge, preserving search state
+                            $livewire = $action->getLivewire();
+                            // Get query parameters from referer or current request
+                            $referer = request()->header('referer');
+                            if ($referer) {
+                                $parsedUrl = parse_url($referer);
+                                $queryString = $parsedUrl['query'] ?? '';
+                                $indexUrl = static::getUrl('index');
+                                if ($queryString) {
+                                    $indexUrl .= '?' . $queryString;
+                                }
+                            } else {
+                                // Fallback: try to get from request query
+                                $indexUrl = static::getUrl('index');
+                                $queryParams = request()->query();
+                                if (!empty($queryParams)) {
+                                    $indexUrl .= '?' . http_build_query($queryParams);
+                                }
+                            }
+                            $livewire->redirect($indexUrl);
                         })
                         ->deselectRecordsAfterCompletion()
                         ->requiresConfirmation()

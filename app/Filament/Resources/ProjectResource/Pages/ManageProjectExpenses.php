@@ -231,7 +231,7 @@ class ManageProjectExpenses extends ManageRelatedRecords
                                     ->required()
                                     ->options([
                                         'paid' => 'Pagado',
-                                        'unpaid' => 'No pagado',
+                                        'unpaid' => 'Pendiente',
                                     ])
                                     ->native(false)
                                     ->columnSpan(1),
@@ -388,7 +388,7 @@ class ManageProjectExpenses extends ManageRelatedRecords
                             })
                             ->formatStateUsing(fn (string $state): string => match ($state) {
                                 'paid' => 'Pagado',
-                                'unpaid' => 'No pagado',
+                                'unpaid' => 'Pendiente',
                                 default => ucfirst($state),
                             })
                             ->searchable(),

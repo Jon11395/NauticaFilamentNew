@@ -513,7 +513,7 @@
                     </div>
                 </div>
                 <div class="flex items-center min-w-0 flex-1">
-                    <div class="text-sm font-medium text-gray-900 dark:text-white truncate" style="margin-left: 8px;">{{ $employee->name }}</div>
+                    <div class="text-sm font-medium !text-gray-900 dark:!text-white truncate" style="margin-left: 8px;">{{ $employee->name }}</div>
                 </div>
             </div>
         @endforeach

@@ -37,7 +37,9 @@ use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
 use Illuminate\Support\HtmlString;
 use App\Models\Employee;
 use App\Models\Timesheet;
+use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 
 
@@ -70,6 +72,7 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
             ->heading('Planillas')
             ->description('Lista de planillas')
             ->defaultSort('date', 'desc')
+            ->modifyQueryUsing(fn ($query) => $query->with('creator'))
             ->columns([
                 
                 Tables\Columns\TextColumn::make('period')
@@ -79,23 +82,20 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                     ->formatStateUsing(function ($state) {
                         if (!$state) return '';
                         
-                        // Set Spanish locale for month names
-                        \Carbon\Carbon::setLocale('es');
-                        
                         // Try to parse the period string and format it
                         // Assuming period might be in format "dd/mm/yyyy - dd/mm/yyyy"
                         if (strpos($state, ' - ') !== false) {
                             $parts = explode(' - ', $state);
-                            $startDate = \Carbon\Carbon::createFromFormat('d/m/Y', trim($parts[0]));
-                            $endDate = \Carbon\Carbon::createFromFormat('d/m/Y', trim($parts[1]));
+                            $startDate = \Carbon\Carbon::createFromFormat('d/m/Y', trim($parts[0]))->locale('es');
+                            $endDate = \Carbon\Carbon::createFromFormat('d/m/Y', trim($parts[1]))->locale('es');
                             
-                            return $startDate->format('M d') . ' - ' . $endDate->format('M d, Y');
+                            return $startDate->translatedFormat('M d') . ' - ' . $endDate->translatedFormat('M d, Y');
                         }
                         
                         // If it's a single date, try to parse it
                         try {
-                            $date = \Carbon\Carbon::parse($state);
-                            return $date->format('M d, Y');
+                            $date = \Carbon\Carbon::parse($state)->locale('es');
+                            return $date->translatedFormat('M d, Y');
                         } catch (\Exception $e) {
                             return $state; // Return original if parsing fails
                         }
@@ -103,44 +103,45 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
 
                 Tables\Columns\TextColumn::make('payroll_type')
                     ->label('Tipo de Planilla')
-                    ->getStateUsing(function ($record) {
-                        // Get the first payment to determine the payroll type from description
-                        $firstPayment = $record->payment()->first();
-                        
-                        if (!$firstPayment) {
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) {
                             return 'N/A';
                         }
                         
-                        $description = $firstPayment->description ?? '';
-                        
-                        if (str_contains($description, 'fija')) {
-                            return 'Fija';
-                        } elseif (str_contains($description, 'horas')) {
-                            return 'Por Horas';
-                        }
-                        
-                        return 'N/A';
+                        return match ($state) {
+                            'fixed' => 'Fija',
+                            'hourly' => 'Por Horas',
+                            default => $state,
+                        };
                     })
                     ->badge()
                     ->searchable()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Fija' => 'success',
-                        'Por Horas' => 'info',
-                        default => 'gray',
+                    ->color(function ($state) {
+                        if (!$state || $state === 'N/A') {
+                            return 'gray';
+                        }
+                        
+                        return match ($state) {
+                            'Fija', 'fixed' => 'success',
+                            'Por Horas', 'hourly' => 'info',
+                            default => 'gray',
+                        };
                     }),
-                Tables\Columns\TextColumn::make('date')
+                Tables\Columns\TextColumn::make('creator.name')
+                    ->label('Creado por')
+                    ->searchable()
+                    ->sortable()
+                    ->default('N/A'),
+                Tables\Columns\TextColumn::make('created_at')
                     ->label('Fecha creación')
                     ->searchable()
                     ->sortable()
                     ->formatStateUsing(function ($state) {
                         if (!$state) return '';
                         
-                        // Set Spanish locale for month names
-                        \Carbon\Carbon::setLocale('es');
-                        
                         try {
-                            $date = \Carbon\Carbon::parse($state);
-                            return $date->format('M d, Y');
+                            $date = \Carbon\Carbon::parse($state)->locale('es');
+                            return $date->translatedFormat('M d, Y');
                         } catch (\Exception $e) {
                             return $state; // Return original if parsing fails
                         }
@@ -185,12 +186,124 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                         'class' => 'fi-modal-large',
                         'style' => 'max-width: 80rem !important; width: 80rem !important;'
                     ])
-                    ->modalSubmitActionLabel('Generar planilla')
+                    ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cancelar')
                     ->extraModalFooterActions([
-                        \Filament\Tables\Actions\Action::make('submit')
+                        \Filament\Tables\Actions\Action::make('generar_planilla_submit')
                             ->label('Generar planilla')
                             ->color('success')
+                            ->icon('heroicon-o-check')
+                            ->extraAttributes([
+                                'x-data' => '{ 
+                                    isLastStep: false,
+                                    hasData: false,
+                                    checkStep() {
+                                        const modal = this.$el.closest(".fi-modal");
+                                        if (!modal) {
+                                            this.isLastStep = false;
+                                            return false;
+                                        }
+                                        const wizard = modal.querySelector(".fi-wizard");
+                                        if (!wizard) {
+                                            this.isLastStep = false;
+                                            return false;
+                                        }
+                                        const steps = wizard.querySelectorAll(".fi-wizard-step");
+                                        const activeStep = wizard.querySelector(".fi-wizard-step-active, [aria-current=\'step\']");
+                                        if (!activeStep || !steps.length) {
+                                            this.isLastStep = false;
+                                            return false;
+                                        }
+                                        const activeIndex = Array.from(steps).indexOf(activeStep);
+                                        const isLast = activeIndex === steps.length - 1;
+                                        this.isLastStep = isLast;
+                                        
+                                        // Check if there is data in the summary step
+                                        if (isLast) {
+                                            this.checkData();
+                                        } else {
+                                            this.hasData = false;
+                                        }
+                                        
+                                        return isLast;
+                                    },
+                                    checkData() {
+                                        const modal = this.$el.closest(".fi-modal");
+                                        if (!modal) {
+                                            this.hasData = false;
+                                            return;
+                                        }
+                                        
+                                        // Check for payroll summary table or employee rows
+                                        const summaryStep = modal.querySelector(".fi-wizard-step-active, [aria-current=\'step\']");
+                                        if (!summaryStep) {
+                                            this.hasData = false;
+                                            return;
+                                        }
+                                        
+                                        // Look for employee rows in the summary table
+                                        // Check for table rows (excluding header rows)
+                                        const employeeRows = summaryStep.querySelectorAll("table tbody tr, .fi-ta-table tbody tr, [wire\\:id*=\'payroll-summary\'] tbody tr");
+                                        
+                                        // Also check for Livewire component that might have employees
+                                        const livewireComponent = summaryStep.querySelector("[wire\\:id*=\'payroll-summary\']");
+                                        
+                                        // Check if there are any employee rows or if the summary shows data
+                                        if (employeeRows && employeeRows.length > 0) {
+                                            this.hasData = true;
+                                            return;
+                                        }
+                                        
+                                        // Check for "no data" messages
+                                        const noDataMessages = summaryStep.querySelectorAll(".fi-ta-empty-state, .empty-state, [class*=\'empty\']");
+                                        if (noDataMessages && noDataMessages.length > 0) {
+                                            this.hasData = false;
+                                            return;
+                                        }
+                                        
+                                        // Check if there are any employee cards or list items
+                                        const employeeCards = summaryStep.querySelectorAll(".employee-card, .fi-ta-item, [data-employee-id]");
+                                        if (employeeCards && employeeCards.length > 0) {
+                                            this.hasData = true;
+                                            return;
+                                        }
+                                        
+                                        // For fixed payroll, check if there are any employees in the session
+                                        // We can check by looking for any content in the summary that indicates employees
+                                        const summaryContent = summaryStep.textContent || "";
+                                        const hasEmployeeData = summaryContent.includes("empleado") || 
+                                                               summaryContent.includes("Empleado") ||
+                                                               summaryContent.includes("Total") ||
+                                                               (summaryContent.match(/\\d+/) && !summaryContent.includes("No hay"));
+                                        
+                                        // More specific check: look for table cells with data (not just headers)
+                                        const dataCells = summaryStep.querySelectorAll("td:not(:empty), .fi-ta-cell:not(:empty)");
+                                        if (dataCells && dataCells.length > 0) {
+                                            this.hasData = true;
+                                        } else {
+                                            this.hasData = hasEmployeeData;
+                                        }
+                                    }
+                                }',
+                                'x-init' => '
+                                    this.checkStep();
+                                    const modal = this.$el.closest(".fi-modal");
+                                    if (modal) {
+                                        const observer = new MutationObserver(() => {
+                                            this.checkStep();
+                                        });
+                                        observer.observe(modal, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-current"] });
+                                        setInterval(() => {
+                                            this.checkStep();
+                                        }, 300);
+                                    }
+                                ',
+                                'x-show' => 'isLastStep',
+                                'x-bind:disabled' => '!hasData',
+                                'x-bind:class' => '!hasData ? "opacity-50 cursor-not-allowed" : ""',
+                                'x-cloak' => '',
+                                'style' => 'display: none;',
+                            ])
                             ->submit('submit'),
                     ])
                     ->requiresConfirmation(false)
@@ -419,9 +532,59 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                                         }),
                                 ]),
                         ])
+                        ->submitAction(
+                            \Filament\Forms\Components\Actions\Action::make('submit')
+                                ->label('Generar planilla')
+                                ->color('success')
+                                ->icon('heroicon-o-check')
+                                ->submit('submit')
+                        )
                     ])
                     ->action(function (array $data) {
                         try {
+                            // Validate that there is data before proceeding
+                            $payrollType = $data['payroll_type'] ?? null;
+                            $dateFrom = $data['date_from'] ?? null;
+                            $dateTo = $data['date_to'] ?? null;
+                            
+                            if (!$dateFrom || !$dateTo) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Datos incompletos')
+                                    ->body('Por favor, complete las fechas de inicio y fin.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                            
+                            if ($payrollType === 'hourly') {
+                                // Check if there are employees with timesheets
+                                $employeeCount = Employee::whereHas('timesheets', function ($query) use ($dateFrom, $dateTo) {
+                                    $query->where('project_id', $this->record->id)
+                                          ->whereBetween('date', [$dateFrom, $dateTo]);
+                                })->count();
+                                
+                                if ($employeeCount === 0) {
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('No hay datos')
+                                        ->body('No hay empleados con horas trabajadas en el período seleccionado.')
+                                        ->warning()
+                                        ->send();
+                                    return;
+                                }
+                            } else {
+                                // Check if there are employees in fixed payroll session data
+                                $fixedPayrollData = session('fixed_payroll_data_' . $this->record->id, []);
+                                
+                                if (empty($fixedPayrollData)) {
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('No hay datos')
+                                        ->body('No hay empleados agregados a la planilla fija.')
+                                        ->warning()
+                                        ->send();
+                                    return;
+                                }
+                            }
+                            
                             $this->handlePayrollGeneration($data);
                             
                             // Close the modal and refresh the table
@@ -591,6 +754,8 @@ class ManageProjectSpreadsheets extends ManageRelatedRecords
                 'date' => $dateFrom,
                 'period' => $period,
                 'attachment' => $pdfPath,
+                'payroll_type' => $payrollType,
+                'created_by' => Auth::id(),
             ]);
             
             // Create payment records for each employee
