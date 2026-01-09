@@ -19,10 +19,16 @@ class Spreadsheet extends Model
         'period',
         'attachment',
         'project_id',
+        'payroll_type',
+        'created_by',
     ];
 
     public function project(){
         return $this->belongsTo(Project::class);
+    }
+
+    public function creator(){
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function payment(): HasMany{

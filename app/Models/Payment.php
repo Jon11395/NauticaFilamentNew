@@ -42,7 +42,7 @@ class Payment extends Model
     }
 
     public function getSalarioAttribute(): string { return $this->salary; }
-    public function getDescripcionAttribute(): string { return $this->description; }
-    public function getNombreAttribute(): string { return $this->employee->name; }
+    public function getDescripcionAttribute(): string { return $this->description ?? ''; }
+    public function getNombreAttribute(): string { return $this->employee->name ?? ''; }
 
 }
