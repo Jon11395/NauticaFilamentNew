@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
-use Smalot\PdfParser\Parser;
 
 class GmailReceiptImportService
 {
@@ -1256,52 +1255,58 @@ class GmailReceiptImportService
             ->first();
     }
 
+    /**
+     * Best-effort USD vs CRC hint from PDF bytes without a PDF parser (smalot/pdfparser
+     * can allocate tens of MB and exhaust 128M PHP limits on typical invoices).
+     */
     protected function detectCurrencyFromPdf(array $pdfAttachment): ?string
     {
         try {
             $data = $pdfAttachment['data'] ?? null;
-            
+
             if (empty($data)) {
                 return null;
             }
 
-            // Determine PDF content - Gmail attachments are usually already decoded
-            // but check if it's base64 encoded or already binary
-            $pdfContent = $data;
-            
-            // Check if it's already a PDF (starts with PDF signature)
             if (str_starts_with($data, '%PDF')) {
                 $pdfContent = $data;
             } else {
-                // Try to decode as base64
                 $decoded = base64_decode($data, true);
-                if ($decoded !== false && strlen($decoded) > 0 && str_starts_with($decoded, '%PDF')) {
+                if ($decoded !== false && $decoded !== '' && str_starts_with($decoded, '%PDF')) {
                     $pdfContent = $decoded;
                 } else {
-                    // If it's not base64 and not PDF, it might be the raw data
                     $pdfContent = $data;
                 }
             }
 
-            // Parse PDF using smalot/pdfparser
-            $parser = new Parser();
-            $pdf = $parser->parseContent($pdfContent);
-            
-            // Extract text from all pages (limit to first few pages for performance)
-            $text = '';
-            $pages = $pdf->getPages();
-            $maxPages = min(3, count($pages)); // Check first 3 pages
-            
-            for ($i = 0; $i < $maxPages; $i++) {
-                $text .= $pages[$i]->getText() . ' ';
+            if ($pdfContent === '' || ! str_starts_with($pdfContent, '%PDF')) {
+                return null;
             }
-            
-            // Normalize text for searching
-            $normalizedText = strtolower($text);
-            
-            // Check for dollar indicators
+
+            $len = strlen($pdfContent);
+            // Skip decoding pathological sizes (currency hint is optional)
+            if ($len > 15 * 1024 * 1024) {
+                Log::info('Skipping PDF currency detection: PDF too large for lightweight scan', [
+                    'filename' => $pdfAttachment['filename'] ?? null,
+                    'bytes' => $len,
+                ]);
+
+                return null;
+            }
+
+            // Only scan bounded windows — text often appears in early streams or near EOF
+            $headSize = min($len, 512 * 1024);
+            $tailSize = min(128 * 1024, max(0, $len - $headSize));
+            $sample = substr($pdfContent, 0, $headSize);
+            if ($tailSize > 0) {
+                $sample .= substr($pdfContent, -$tailSize);
+            }
+            unset($pdfContent);
+
+            $normalizedText = strtolower($sample);
+
             $dollarIndicators = [
-                '$', // Dollar sign
+                '$',
                 'usd',
                 'dólar',
                 'dolar',
@@ -1310,44 +1315,39 @@ class GmailReceiptImportService
                 'dolares',
                 'dollars',
             ];
-            
+
             $colonIndicators = [
-                '₡', // Colon symbol
+                '₡',
                 'colón',
                 'colon',
                 'colones',
                 'crc',
             ];
-            
-            // Count occurrences of dollar and colon indicators
+
             $dollarCount = 0;
             $colonCount = 0;
-            
+
             foreach ($dollarIndicators as $indicator) {
                 $dollarCount += substr_count($normalizedText, $indicator);
             }
-            
+
             foreach ($colonIndicators as $indicator) {
                 $colonCount += substr_count($normalizedText, $indicator);
             }
-            
-            // If we find dollar signs/indicators and significantly more than colon indicators, it's USD
+
             if ($dollarCount > 0 && ($dollarCount > $colonCount || $colonCount === 0)) {
-                // Additional check: look for USD patterns near amounts
-                if (preg_match('/\$\s*[\d,]+\.?\d*/', $text) || preg_match('/(usd|dólar|dollar)\s*[\d,]+\.?\d*/i', $text)) {
+                if (preg_match('/\$\s*[\d,]+\.?\d*/', $sample) || preg_match('/(usd|dólar|dollar)\s*[\d,]+\.?\d*/i', $sample)) {
                     return 'USD';
                 }
             }
-            
-            // Default to CRC (Colones) if no clear indication
+
             return null;
         } catch (\Throwable $exception) {
-            // Log error but don't fail the import
             Log::warning('Failed to detect currency from PDF', [
                 'exception' => $exception,
                 'filename' => $pdfAttachment['filename'] ?? null,
             ]);
-            
+
             return null;
         }
     }

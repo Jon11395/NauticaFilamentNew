@@ -2,44 +2,44 @@
 
 namespace App\Filament\Resources;
 
+use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
+use Altwaireb\World\Models\City;
+use Altwaireb\World\Models\State;
+use App\Filament\Resources\ProviderResource\Pages;
+use App\Models\Provider;
 use Filament\Forms;
-use Filament\Tables;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use App\Models\Provider;
-use Filament\Forms\Form;
-use Filament\Tables\Table;
-use Filament\Resources\Resource;
-use Altwaireb\World\Models\State;
-use Altwaireb\World\Models\City;
-use Illuminate\Support\Collection;
-use Filament\Forms\Components\Section;
-use App\Filament\Resources\ProviderResource\Pages;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
-use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
-use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
-use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
-use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
-use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
-use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
+use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
+use Filament\Tables;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
-
+use Filament\Tables\Table;
+use Illuminate\Support\Collection;
+use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
+use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
+use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
+use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
+use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
 
 class ProviderResource extends Resource
 {
     protected static ?string $model = Provider::class;
 
     protected static ?string $navigationGroup = 'Proyectos';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationLabel = 'Proveedores';
-    protected static ?string $breadcrumb = "Proveedores";
+
+    protected static ?string $breadcrumb = 'Proveedores';
+
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
-
-
-
 
     public static function infolists(Infolist $infolist): Infolist
     {
@@ -56,14 +56,13 @@ class ProviderResource extends Resource
         return $form
             ->schema([
 
-
                 Section::make('Información personal')
-                ->columns([
-                    'sm' => 3,
-                    'xl' => 3,
-                    '2xl' => 3,
-                ])
-                ->schema([
+                    ->columns([
+                        'sm' => 3,
+                        'xl' => 3,
+                        '2xl' => 3,
+                    ])
+                    ->schema([
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255),
@@ -75,51 +74,51 @@ class ProviderResource extends Resource
                             ->required()
                             ->email()
                             ->maxLength(255),
-                ]),
+                    ]),
 
                 Section::make('Dirección')
-                ->columns([
-                    'sm' => 3,
-                    'xl' => 3,
-                    '2xl' => 3,
-                ])
-                ->schema([
-                    Forms\Components\Select::make('country_id')
-                        ->label('País')
-                        ->relationship(name:'country', titleAttribute:'name')
-                        ->searchable()
-                        ->preload()
-                        ->live()
-                        ->afterStateUpdated(function (Set $set) {
-                            $set('state_id', null);
-                            $set('city_id', null);
-                        }) 
-                        ->required(),
-                    Forms\Components\Select::make('state_id')
-                        ->options(fn (Get $get): Collection => State::query()
-                            ->where('country_id', $get('country_id'))
-                            ->pluck('name', 'id')
-                        )
-                        ->label('Estado o Provincia')
-                        ->searchable()
-                        ->preload()
-                        ->live()
-                        ->afterStateUpdated(function (Set $set) {
-                            $set('city_id', null);
-                        }) 
-                        ->required(),
-                    Forms\Components\Select::make('city_id')
-                        ->options(fn (Get $get): Collection => City::query()
-                            ->where('state_id', $get('state_id'))
-                            ->pluck('name', 'id')
-                        )
-                        ->label('Ciudad')
-                        ->searchable()
-                        ->preload()
-                        ->required(),
-                    
-                ]),
-       
+                    ->columns([
+                        'sm' => 3,
+                        'xl' => 3,
+                        '2xl' => 3,
+                    ])
+                    ->schema([
+                        Forms\Components\Select::make('country_id')
+                            ->label('País')
+                            ->relationship(name: 'country', titleAttribute: 'name')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('state_id', null);
+                                $set('city_id', null);
+                            })
+                            ->required(),
+                        Forms\Components\Select::make('state_id')
+                            ->options(fn (Get $get): Collection => State::query()
+                                ->where('country_id', $get('country_id'))
+                                ->pluck('name', 'id')
+                            )
+                            ->label('Estado o Provincia')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('city_id', null);
+                            })
+                            ->required(),
+                        Forms\Components\Select::make('city_id')
+                            ->options(fn (Get $get): Collection => City::query()
+                                ->where('state_id', $get('state_id'))
+                                ->pluck('name', 'id')
+                            )
+                            ->label('Ciudad')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+
+                    ]),
+
             ]);
     }
 
@@ -178,11 +177,10 @@ class ProviderResource extends Resource
                             ->sortable()
                             ->searchable()
                             ->icon('heroicon-m-flag'),
-                        
+
                     ]),
                 ]),
 
-                
             ])
             ->filters([
                 //
@@ -196,11 +194,11 @@ class ProviderResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                //Tables\Actions\DeleteBulkAction::make(),
-                FilamentExportBulkAction::make('Exportar'),
+                    // Tables\Actions\DeleteBulkAction::make(),
+                    FilamentExportBulkAction::make('Exportar'),
                 ]),
             ])
-            ->recordUrl(fn () => null)
+            ->recordUrl(null)
             ->recordAction(null);
     }
 
@@ -215,8 +213,8 @@ class ProviderResource extends Resource
     {
         return [
             'index' => Pages\ListProviders::route('/'),
-            //'create' => Pages\CreateProvider::route('/create'),
-            //'edit' => Pages\EditProvider::route('/{record}/edit'),
+            // 'create' => Pages\CreateProvider::route('/create'),
+            // 'edit' => Pages\EditProvider::route('/{record}/edit'),
         ];
     }
 }
