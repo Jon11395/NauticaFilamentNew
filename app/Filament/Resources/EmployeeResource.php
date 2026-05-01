@@ -285,7 +285,7 @@ class EmployeeResource extends Resource
                     FilamentExportBulkAction::make('Exportar'),
                 ]),
             ])
-            ->recordUrl(fn () => null)
+            ->recordUrl(null)
             ->recordAction(null);
     }
 

@@ -4,9 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Models\Activity;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Payment extends Model
 {
@@ -20,14 +19,16 @@ class Payment extends Model
         'deposited',
         'description',
         'employee_id',
-        'spreadsheet_id'
+        'spreadsheet_id',
     ];
 
-    public function spreadsheet(){
+    public function spreadsheet()
+    {
         return $this->belongsTo(Spreadsheet::class);
     }
 
-    public function employee(){
+    public function employee()
+    {
         return $this->belongsTo(Employee::class);
     }
 
@@ -38,11 +39,25 @@ class Payment extends Model
             ->logOnly(['Salario', 'Descripcion', 'Nombre'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "This expense has been {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "This expense has been {$eventName}");
     }
 
-    public function getSalarioAttribute(): string { return $this->salary; }
-    public function getDescripcionAttribute(): string { return $this->description ?? ''; }
-    public function getNombreAttribute(): string { return $this->employee->name ?? ''; }
+    public function getSalarioAttribute(): string
+    {
+        $raw = $this->attributes['salary'] ?? null;
 
+        return $raw === null || $raw === '' ? '' : (string) $raw;
+    }
+
+    public function getDescripcionAttribute(): string
+    {
+        $raw = $this->attributes['description'] ?? null;
+
+        return $raw === null || $raw === '' ? '' : (string) $raw;
+    }
+
+    public function getNombreAttribute(): string
+    {
+        return (string) ($this->employee?->name ?? '');
+    }
 }

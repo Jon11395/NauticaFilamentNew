@@ -2,15 +2,12 @@
 
 namespace App\Models;
 
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Models\Activity;
-
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Expense extends Model
 {
@@ -36,10 +33,13 @@ class Expense extends Model
         'attachment' => 'array',
     ];
 
-    public function project(){
+    public function project()
+    {
         return $this->belongsTo(Project::class);
     }
-    public function provider(){
+
+    public function provider()
+    {
         return $this->belongsTo(Provider::class);
     }
 
@@ -79,13 +79,13 @@ class Expense extends Model
             if ($expense->isDirty('attachment')) {
                 $oldAttachment = $expense->getOriginal('attachment');
                 $newAttachment = $expense->attachment;
-                
+
                 // Helper to normalize attachment to array of clean paths
-                $normalizeAttachment = function($attachment) {
+                $normalizeAttachment = function ($attachment) {
                     $paths = [];
                     if (is_array($attachment)) {
                         $paths = $attachment;
-                    } else if (is_string($attachment) && !empty($attachment)) {
+                    } elseif (is_string($attachment) && ! empty($attachment)) {
                         $decoded = json_decode($attachment, true);
                         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                             $paths = $decoded;
@@ -93,48 +93,51 @@ class Expense extends Model
                             $paths = [$attachment];
                         }
                     }
-                    
+
                     // Normalize each path
-                    return array_map(function($path) {
-                        if (!is_string($path) || empty($path)) return null;
+                    return array_map(function ($path) {
+                        if (! is_string($path) || empty($path)) {
+                            return null;
+                        }
                         $cleaned = trim($path, " \t\n\r\0\x0B'\"");
                         $cleaned = ltrim($cleaned, '/');
+
                         return preg_replace('#^storage/#', '', $cleaned);
-                    }, array_filter($paths, fn($p) => !empty($p)));
+                    }, array_filter($paths, fn ($p) => ! empty($p)));
                 };
-                
+
                 $oldPathsNormalized = $normalizeAttachment($oldAttachment);
                 $newPathsNormalized = $normalizeAttachment($newAttachment);
-                
+
                 // Sort both arrays for comparison
                 sort($oldPathsNormalized);
                 sort($newPathsNormalized);
-                
+
                 // Only proceed if attachments are actually different
                 if ($oldPathsNormalized !== $newPathsNormalized) {
                     // Only delete files that are not in the new attachment
                     $filesToDelete = array_diff($oldPathsNormalized, $newPathsNormalized);
-                    
+
                     foreach ($filesToDelete as $filePath) {
-                        if (empty($filePath) || !is_string($filePath)) {
+                        if (empty($filePath) || ! is_string($filePath)) {
                             continue;
                         }
-                        
+
                         // Clean the path
                         $cleanPath = ltrim($filePath, '/');
                         $cleanPath = preg_replace('#^storage/#', '', $cleanPath);
-                        
+
                         // Check if this file is used by any other expense before deleting
                         $isUsedByOtherExpense = self::where('id', '!=', $expense->id)
                             ->where(function ($query) use ($cleanPath, $filePath) {
-                                $query->where('attachment', 'like', '%' . $cleanPath . '%')
-                                    ->orWhere('attachment', 'like', '%' . $filePath . '%')
+                                $query->where('attachment', 'like', '%'.$cleanPath.'%')
+                                    ->orWhere('attachment', 'like', '%'.$filePath.'%')
                                     ->orWhereJsonContains('attachment', $cleanPath)
                                     ->orWhereJsonContains('attachment', $filePath);
                             })
                             ->exists();
-                        
-                        if (!$isUsedByOtherExpense && Storage::disk('public')->exists($cleanPath)) {
+
+                        if (! $isUsedByOtherExpense && Storage::disk('public')->exists($cleanPath)) {
                             \Log::info('Deleting attachment file during update', [
                                 'expense_id' => $expense->id,
                                 'file_path' => $cleanPath,
@@ -177,7 +180,7 @@ class Expense extends Model
             $attachmentPaths = [];
             if (is_array($attachments)) {
                 $attachmentPaths = $attachments;
-            } else if (is_string($attachments) && !empty($attachments)) {
+            } elseif (is_string($attachments) && ! empty($attachments)) {
                 $decoded = json_decode($attachments, true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                     $attachmentPaths = $decoded;
@@ -188,7 +191,7 @@ class Expense extends Model
 
             // Check each attachment before deleting
             foreach ($attachmentPaths as $filePath) {
-                if (empty($filePath) || !is_string($filePath)) {
+                if (empty($filePath) || ! is_string($filePath)) {
                     continue;
                 }
 
@@ -199,14 +202,14 @@ class Expense extends Model
                 // Check if this file is used by any other expense
                 $isUsedByOtherExpense = self::where('id', '!=', $expense->id)
                     ->where(function ($query) use ($cleanPath, $filePath) {
-                        $query->where('attachment', 'like', '%' . $cleanPath . '%')
-                            ->orWhere('attachment', 'like', '%' . $filePath . '%')
+                        $query->where('attachment', 'like', '%'.$cleanPath.'%')
+                            ->orWhere('attachment', 'like', '%'.$filePath.'%')
                             ->orWhereJsonContains('attachment', $cleanPath)
                             ->orWhereJsonContains('attachment', $filePath);
                     })
                     ->exists();
 
-                if (!$isUsedByOtherExpense) {
+                if (! $isUsedByOtherExpense) {
                     // File is not used by any other expense, safe to delete
                     if (Storage::disk('public')->exists($cleanPath)) {
                         \Log::info('Deleting attachment file', [
@@ -232,38 +235,65 @@ class Expense extends Model
             ->logOnly(['Comprobante', 'Fecha', 'Concepto', 'Monto', 'Tipo', 'Proveedor', 'TipoGasto', 'Adjunto'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "This expense has been {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "This expense has been {$eventName}");
     }
 
-    public function getComprobanteAttribute(): string { return $this->voucher; }
+    public function getComprobanteAttribute(): string
+    {
+        return (string) ($this->attributes['voucher'] ?? '');
+    }
 
-    public function getFechaAttribute(): string { return $this->date;}
-    
+    public function getFechaAttribute(): string
+    {
+        return (string) ($this->attributes['date'] ?? '');
+    }
+
     public function getConceptoAttribute(): string
     {
-        return $this->concept ?? '';
+        $raw = $this->attributes['concept'] ?? null;
+
+        return $raw === null || $raw === '' ? '' : (string) $raw;
     }
 
-    public function getMontoAttribute(): string { return $this->amount;}
+    public function getMontoAttribute(): string
+    {
+        $raw = $this->attributes['amount'] ?? null;
 
-    public function getTipoAttribute(): string { return $this->type;}
-    
-    public function getProveedorAttribute(): string { return $this->Provider->name;}
+        return $raw === null || $raw === '' ? '' : (string) $raw;
+    }
 
-    public function getTipoGastoAttribute(): string { return $this->expenseType?->name ?? '';}
+    public function getTipoAttribute(): string
+    {
+        $raw = $this->attributes['type'] ?? null;
 
-    public function getAdjuntoAttribute(): string { return $this->attachment ? 'Adjunto' : 'Adjunto eliminado';}
+        return $raw === null || $raw === '' ? '' : (string) $raw;
+    }
+
+    public function getProveedorAttribute(): string
+    {
+        return (string) ($this->provider?->name ?? '');
+    }
+
+    public function getTipoGastoAttribute(): string
+    {
+        return (string) ($this->expenseType?->name ?? '');
+    }
+
+    public function getAdjuntoAttribute(): string
+    {
+        return $this->attachment ? 'Adjunto' : 'Adjunto eliminado';
+    }
 
     /**
      * Delete attachments for expenses older than the configured retention period
-     * 
+     *
      * @return array Statistics about the deletion process
      */
     public static function deleteOldAttachments(): array
     {
         // Get retention period from global config (default to 12 months / 1 year)
         $retentionMonths = \App\Models\GlobalConfig::getValue('expense_attachment_retention_months', 12);
-        
+
         // If retention is 0 or null, deletion is disabled
         if (empty($retentionMonths) || $retentionMonths == 0) {
             return [
@@ -274,7 +304,7 @@ class Expense extends Model
                 'message' => 'Eliminación automática de adjuntos desactivada',
             ];
         }
-        
+
         $cutoffDate = now()->subMonths($retentionMonths);
         $expensesProcessed = 0;
         $attachmentsDeleted = 0;
@@ -293,7 +323,7 @@ class Expense extends Model
             $attachmentPaths = [];
             if (is_array($attachments)) {
                 $attachmentPaths = $attachments;
-            } else if (is_string($attachments) && !empty($attachments)) {
+            } elseif (is_string($attachments) && ! empty($attachments)) {
                 $decoded = json_decode($attachments, true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                     $attachmentPaths = $decoded;
@@ -311,7 +341,7 @@ class Expense extends Model
 
             // Delete each attachment file
             foreach ($attachmentPaths as $filePath) {
-                if (empty($filePath) || !is_string($filePath)) {
+                if (empty($filePath) || ! is_string($filePath)) {
                     continue;
                 }
 
@@ -322,14 +352,14 @@ class Expense extends Model
                 // Check if this file is used by any other expense
                 $isUsedByOtherExpense = self::where('id', '!=', $expense->id)
                     ->where(function ($query) use ($cleanPath, $filePath) {
-                        $query->where('attachment', 'like', '%' . $cleanPath . '%')
-                            ->orWhere('attachment', 'like', '%' . $filePath . '%')
+                        $query->where('attachment', 'like', '%'.$cleanPath.'%')
+                            ->orWhere('attachment', 'like', '%'.$filePath.'%')
                             ->orWhereJsonContains('attachment', $cleanPath)
                             ->orWhereJsonContains('attachment', $filePath);
                     })
                     ->exists();
 
-                if (!$isUsedByOtherExpense) {
+                if (! $isUsedByOtherExpense) {
                     // File is not used by any other expense, safe to delete
                     if (Storage::disk('public')->exists($cleanPath)) {
                         \Log::info('Deleting old expense attachment', [
