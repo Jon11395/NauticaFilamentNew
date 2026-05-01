@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # Node en DOM Cloud tiene poca RAM; npm install OOM sin NODE_OPTIONS + npm ci.
       - name: Invoke deployment hook
         uses: distributhor/workflow-webhook@v3
         env:
@@ -26,8 +27,7 @@ jobs:
                 "composer install --no-interaction --prefer-dist --optimize-autoloader",
                 "php artisan vendor:publish --tag=filament-config --force",
                 "php artisan vendor:publish --tag=filament-general-settings-views --force",
-                "npm install",
-                "npm run build",
+                "export NODE_OPTIONS='--max-old-space-size=2048' npm_config_maxsockets=2 && npm ci --no-audit --no-fund && npm run build",
                 "php artisan migrate --force",
                 "php artisan cache:forget general_settings",
                 "php artisan optimize:clear",
