@@ -10,8 +10,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Node en DOM Cloud tiene poca RAM; npm install OOM sin NODE_OPTIONS + npm ci.
-      - name: Invoke deployment hook
+      - uses: actions/checkout@v4
+
+      # Vite en el runner de DOM Cloud revienta por RAM (Wasm/undici). Se compila aquí.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build frontend (GitHub runner)
+        run: npm ci && npm run build
+
+      - name: Deploy PHP/Laravel on DOM Cloud (webhook)
         uses: distributhor/workflow-webhook@v3
         env:
           webhook_url: https://my.domcloud.co/api/githubdeploy
@@ -27,7 +37,6 @@ jobs:
                 "composer install --no-interaction --prefer-dist --optimize-autoloader",
                 "php artisan vendor:publish --tag=filament-config --force",
                 "php artisan vendor:publish --tag=filament-general-settings-views --force",
-                "export NODE_OPTIONS='--max-old-space-size=2048' npm_config_maxsockets=2 && npm ci --no-audit --no-fund && npm run build",
                 "php artisan migrate --force",
                 "php artisan cache:forget general_settings",
                 "php artisan optimize:clear",
@@ -42,3 +51,26 @@ jobs:
               ]
             }
 
+      # Requiere en GitHub → Settings → Secrets: DOMCLOUD_DEV_SSH_KEY, DOMCLOUD_DEV_SSH_HOST,
+      # DOMCLOUD_DEV_SSH_USER, DOMCLOUD_DEV_BUILD_PATH (ej. /home/gruponauticadev/public_html/public/build/)
+      - name: Rsync public/build to DOM Cloud
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DOMCLOUD_DEV_SSH_KEY }}
+          HOST: ${{ secrets.DOMCLOUD_DEV_SSH_HOST }}
+          USER: ${{ secrets.DOMCLOUD_DEV_SSH_USER }}
+          REMOTE_DIR: ${{ secrets.DOMCLOUD_DEV_BUILD_PATH }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SSH_PRIVATE_KEY:-}" ] || [ -z "${HOST:-}" ] || [ -z "${USER:-}" ] || [ -z "${REMOTE_DIR:-}" ]; then
+            echo "::error::Define secrets DOMCLOUD_DEV_SSH_KEY, DOMCLOUD_DEV_SSH_HOST, DOMCLOUD_DEV_SSH_USER, DOMCLOUD_DEV_BUILD_PATH (ruta remota de public/build/, con slash final)."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/domcloud_dev_ed25519
+          chmod 600 ~/.ssh/domcloud_dev_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          rsync -avz --delete \
+            -e "ssh -i $HOME/.ssh/domcloud_dev_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+            public/build/ "${USER}@${HOST}:${REMOTE_DIR}"
+          rm -f ~/.ssh/domcloud_dev_ed25519
