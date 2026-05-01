@@ -239,7 +239,10 @@ class Expense extends Model
 
     public function getFechaAttribute(): string { return $this->date;}
     
-    public function getConceptoAttribute(): string { return $this->concept;}
+    public function getConceptoAttribute(): string
+    {
+        return $this->concept ?? '';
+    }
 
     public function getMontoAttribute(): string { return $this->amount;}
 
