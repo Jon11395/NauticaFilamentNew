@@ -41,8 +41,11 @@ class XmlReceiptParser
             ?? $this->firstValue($document, 'ResumenFactura/TotalVentaNeta')
             ?? $this->firstValue($document, 'ResumenFactura/TotalVenta');
 
-        $currency = $this->firstValue($document, 'ResumenFactura/CodigoMoneda');
-        $exchangeRate = $this->firstValue($document, 'ResumenFactura/TipoCambio');
+        // v4.x wraps currency in CodigoTipoMoneda; older payloads sometimes used flat ResumenFactura/CodigoMoneda.
+        $currency = $this->firstValue($document, 'ResumenFactura/CodigoTipoMoneda/CodigoMoneda')
+            ?? $this->firstValue($document, 'ResumenFactura/CodigoMoneda');
+        $exchangeRate = $this->firstValue($document, 'ResumenFactura/CodigoTipoMoneda/TipoCambio')
+            ?? $this->firstValue($document, 'ResumenFactura/TipoCambio');
         $saleCondition = $this->firstValue($document, 'CondicionVenta');
 
         $concepts = $this->collectConcepts($document);
